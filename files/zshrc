@@ -1,0 +1,64 @@
+# Managed by computer-setup (layer: public) — do not edit manually.
+# Powerlevel10k and the zsh plugins are installed as Homebrew formulae and
+# sourced directly below. This file is provided by a content layer; the
+# orchestrator only deploys it and the ~/.zsh snippets it sources.
+
+# ─── Powerlevel10k instant prompt ─────────────────────────────────────────────
+# Must stay near the top. Any code that needs console input (password prompts,
+# [y/n] confirmations) must go ABOVE this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# ─── History ──────────────────────────────────────────────────────────────────
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=50000
+SAVEHIST=50000
+setopt SHARE_HISTORY          # share history across concurrent sessions
+setopt HIST_IGNORE_ALL_DUPS   # drop older duplicates of a command
+setopt HIST_SAVE_NO_DUPS      # never write duplicate entries to the file
+setopt HIST_REDUCE_BLANKS     # trim superfluous whitespace
+setopt HIST_IGNORE_SPACE      # commands starting with a space are not recorded
+
+# ─── History-prefix search on the arrow keys ─────────────────────────────────
+# Type a prefix, then press Up/Down to cycle through past commands that start
+# with it (cursor stays at the end of the line).
+autoload -Uz up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A' up-line-or-beginning-search    # Up
+bindkey '^[[B' down-line-or-beginning-search  # Down
+[[ -n "${terminfo[kcuu1]}" ]] && bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search
+[[ -n "${terminfo[kcud1]}" ]] && bindkey "${terminfo[kcud1]}" down-line-or-beginning-search
+
+# ─── Completions ──────────────────────────────────────────────────────────────
+# Cached compinit: rebuild the dump when it is missing or older than 24h,
+# otherwise trust it (-C) to keep new-shell startup fast.
+autoload -Uz compinit
+_zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+if [[ ! -f "$_zcompdump" || -n "$_zcompdump"(#qN.mh+24) ]]; then
+  compinit -d "$_zcompdump"
+else
+  compinit -C -d "$_zcompdump"
+fi
+unset _zcompdump
+
+# ─── Managed modular configs ──────────────────────────────────────────────────
+# Source every snippet computer-setup deployed (engine CLI + all layers), in
+# filename order. The orchestrator manages the contents of ~/.zsh.
+for _cs_snippet in "$HOME"/.zsh/*.zsh(N); do
+  source "$_cs_snippet"
+done
+unset _cs_snippet
+
+# ─── Powerlevel10k theme ──────────────────────────────────────────────────────
+[[ -r "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme" ]] && \
+  source "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme"
+[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+
+# ─── Plugins (Homebrew) ───────────────────────────────────────────────────────
+# Order matters: autosuggestions first, syntax highlighting LAST.
+[[ -r "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
+  source "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+[[ -r "/opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]] && \
+  source "/opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"

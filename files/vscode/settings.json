@@ -1,0 +1,209 @@
+{
+    // UI & Theme
+    "workbench.colorTheme": "Dark+",
+    "workbench.iconTheme": "material-icon-theme",
+    "workbench.startupEditor": "none",
+    "workbench.editor.empty.hint": "hidden",
+    "workbench.colorCustomizations": {
+        // Tabs - keeping your green theme
+        "tab.activeBackground": "#5b7e72",
+        "tab.inactiveBackground": "#2c4d42",
+
+        // Editor - main coding area (lighter than default)
+        "editor.background": "#3a3a3a",
+        "editor.foreground": "#e8e8e8",
+
+        // Sidebar - file explorer (slightly darker than editor)
+        "sideBar.background": "#343438",
+        "sideBar.foreground": "#d4d4d4",
+        "list.activeSelectionBackground": "#4a5a52",
+        "list.activeSelectionForeground": "#ffffff",
+        "list.inactiveSelectionBackground": "#3f4f47",
+        "list.hoverBackground": "#3a4842",
+        "list.focusOutline": "#00000000",
+        "list.focusAndSelectionOutline": "#00000000",
+
+        // Activity Bar - far left icons (darker for contrast)
+        "activityBar.background": "#3a3a3e",
+        "activityBar.foreground": "#ffffff",
+
+        // Status Bar - bottom bar (keeping subtle)
+        // "statusBar.background": "#007acc",
+        // "statusBar.foreground": "#ffffff",
+
+        // Title Bar - top bar
+        "titleBar.activeBackground": "#434343",
+        "titleBar.activeForeground": "#d4d4d4",
+
+        // Panel - terminal/output area (same as sidebar for consistency)
+        "panel.background": "#343438",
+        "panel.border": "#454549"
+    },
+    "breadcrumbs.enabled": false,
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    "update.showReleaseNotes": false,
+
+    // Editor
+    "editor.linkedEditing": true,
+    "editor.guides.bracketPairs": true,
+    "editor.guides.bracketPairsHorizontal": "active",
+    "editor.renderWhitespace": "all",
+    "editor.minimap.enabled": false,
+
+    // Files
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.exclude": {
+        "**/.DS_Store": true,
+    },
+    "files.associations": {
+        "*.sql": "jinja-sql",
+        ".sqlfluff": "ini"
+    },
+
+    // Language Settings
+    "[sql]": {
+        "editor.tabSize": 2
+    },
+    "[jinja-sql]": {
+        "editor.defaultFormatter": "sqlfluff.vscode-sqlfluff"
+    },
+    "[dockercompose]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.autoIndent": "advanced",
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+    "[github-actions-workflow]": {
+        "editor.defaultFormatter": "redhat.vscode-yaml"
+    },
+
+    // Git & Diff
+    "git.confirmSync": false,
+    "git.autofetch": true,
+    "git.openRepositoryInParentFolders": "never",
+    "gitlens.views.stashes.files.layout": "list",
+    "gitlens.ai.model": "vscode",
+    "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+    "diffEditor.ignoreTrimWhitespace": false,
+    "diffEditor.renderSideBySide": true,
+    "diffEditor.experimental.showMoves": true,
+    "githubPullRequests.pullBranch": "never",
+    "githubPullRequests.createOnPublishBranch": "never",
+
+    // Terminal
+    "terminal.integrated.defaultProfile.osx": "zsh",
+    "terminal.integrated.defaultProfile.linux": "zsh",
+    "terminal.integrated.scrollback": 5000,
+    "terminal.integrated.suggest.enabled": false,
+    "terminal.integrated.initialHint": false,
+
+    // Python
+    "python.terminal.activateEnvironment": false,
+    "python.createEnvironment.trigger": "off",
+    "python.analysis.typeCheckingMode": "standard",
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+    "python.envFile": "${workspaceFolder}/.env",
+
+    // Ruff
+    "ruff.organizeImports": false,
+
+    // SQL & DBT
+    "sqlfluff.executablePath": "${workspaceFolder}/.venv/bin/sqlfluff",
+    "sqlfluff.config": "${workspaceFolder}/.sqlfluff",
+    "sqlfluff.linter.arguments": ["--templater", "jinja"],
+
+    // Other Extensions
+    "jupyter.askForKernelRestart": false,
+    "debug.allowBreakpointsEverywhere": true,
+    "dev.containers.cacheVolume": false,
+    "github.copilot.nextEditSuggestions.enabled": false,
+    "evenBetterToml.formatter.reorderKeys": true,
+    "redhat.telemetry.enabled": false,
+    "todo-tree.ripgrep.ripgrep": "/opt/homebrew/bin/rg",
+
+    // Peacock Colors
+    "peacock.favoriteColors": [
+        {"name": "Angular Red", "value": "#dd0531"},
+        {"name": "Azure Blue", "value": "#007fff"},
+        {"name": "JavaScript Yellow", "value": "#f9e64f"},
+        {"name": "Mandalorian Blue", "value": "#1857a4"},
+        {"name": "Node Green", "value": "#215732"},
+        {"name": "React Blue", "value": "#61dafb"},
+        {"name": "Something Different", "value": "#832561"},
+        {"name": "Svelte Orange", "value": "#ff3d00"},
+        {"name": "Vue Green", "value": "#42b883"}
+    ],
+
+    // Chat & AI
+    "chat.mcp.autostart": "newAndOutdated",
+    "chat.mcp.gallery.enabled": true,
+    "chat.agent.maxRequests": 100,
+    "chat.instructionsFilesLocations": {
+        ".github/instructions": true,
+    },
+    "chat.viewSessions.orientation": "stacked",
+    "chat.tools.urls.autoApprove": {
+        "https://code.visualstudio.com": true,
+        "https://github.com/microsoft/vscode/wiki/*": true,
+        "https://docs.sqlfluff.com": {
+            "approveRequest": false,
+            "approveResponse": true
+        },
+        "https://*.google.com": true,
+        "https://*.terraform.io": true,
+        "https://*.reddit.com": true,
+
+    },
+    "chat.tools.terminal.autoApprove": {
+        // Read-only unix commands
+        "cd": true,
+        "echo": true,
+        "ls": true,
+        "pwd": true,
+        "cat": true,
+        "head": true,
+        "tail": true,
+        "wc": true,
+        "tr": true,
+        "cut": true,
+        "which": true,
+        "basename": true,
+        "dirname": true,
+        "stat": true,
+        "file": true,
+        "du": true,
+        "df": true,
+        "sleep": true,
+        "grep": true,
+        "column": true,
+        "/^column\\b.*\\s-c\\s+[0-9]{4,}/": false,
+        "date": true,
+        "/^date\\b.*\\s(-s|--set)\\b/": false,
+        "tree": true,
+        "/^tree\\b.*\\s-o\\b/": false,
+        // Read-only with dangerous flag guards
+        "find": true,
+        "/^find\\b.*\\s-(delete|exec|execdir|fprint|fprintf|fls|ok|okdir)\\b/": false,
+        "rg": true,
+        "/^rg\\b.*\\s(--pre|--hostname-bin)\\b/": false,
+        "sed": true,
+        "/^sed\\b.*\\s(-[a-zA-Z]*(e|f)[a-zA-Z]*|--expression|--file)\\b/": false,
+        "/^sed\\b.*s\\/.*\\/.*\\/[ew]/": false,
+        "/^sed\\b.*;W/": false,
+        "sort": true,
+        "/^sort\\b.*\\s-(o|S)\\b/": false,
+        // Git (read-only subcommands)
+        "diff": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+status\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+log\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+log\\b.*\\s--output(=|\\s|$)/": false,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+show\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+diff\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+ls-files\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+grep\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+branch\\b/": true,
+        "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+branch\\b.*\\s-(d|D|m|M|-delete|-force)\\b/": false
+    },
+}

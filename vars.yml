@@ -1,0 +1,127 @@
+---
+# Baseline variable values consumed by the orchestrator's roles.
+# These fill the orchestrator's "safe empty" defaults with a shareable baseline.
+# Lists append across layers; scalars are overridden by higher-priority layers.
+
+# ─── Homebrew baseline (homebrew role) ───────────────────────────────────────
+# Formulae always installed. git/gh/yq/ansible are also bootstrap prerequisites
+# (installed in Phase 0); listing them here keeps them under drift management.
+homebrew_mandatory_formulae:
+  - git
+  - gh
+  - jq
+  - gnupg
+  - ansible
+  - pre-commit
+  - tree
+  - yq
+  - python@3.14
+  - powerlevel10k
+  - zsh-autosuggestions
+  - zsh-fast-syntax-highlighting
+
+# Casks always installed.
+homebrew_mandatory_casks:
+  - rectangle
+
+# Casks safe to `--adopt` when already present in /Applications but not
+# Homebrew-managed. Keep explicit: some casks with protected payloads can fail
+# adoption and remove the existing app.
+homebrew_adopt_casks:
+  - rectangle
+  - visual-studio-code
+  - firefox
+  - discord
+  - spotify
+
+# ─── VS Code baseline (vscode role) ──────────────────────────────────────────
+vscode_mandatory_extensions:
+  - charliermarsh.ruff
+  - esbenp.prettier-vscode
+  - eamodio.gitlens
+  - github.vscode-github-actions
+  - github.vscode-pull-request-github
+  - ms-python.python
+  - ms-python.vscode-pylance
+  - hashicorp.terraform
+  - redhat.vscode-yaml
+  - shinichi-takii.sql-bigquery
+  - sqlfluff.vscode-sqlfluff
+  - gruntfuggly.todo-tree
+  - samuelcolvin.jinjahtml
+
+# ─── git (git role) ──────────────────────────────────────────────────────────
+git_default_branch: main
+git_config_sections:
+  pull:
+    rebase: "true"
+  fetch:
+    prune: "true"
+  push:
+    autoSetupRemote: "true"
+  rerere:
+    enabled: "true"
+git_global_gitignore_entries:
+  - .DS_Store
+  - "*.pyc"
+  - __pycache__/
+  - .env
+  - .venv/
+  - venv/
+  - .idea/
+  - .vscode/
+
+# ─── macOS system defaults (macos role) ──────────────────────────────────────
+# Native YAML types (not strings) for osx_defaults idempotency.
+macos_defaults:
+  - domain: NSGlobalDomain          # Finder: show all file extensions
+    key: AppleShowAllExtensions
+    type: bool
+    value: true
+    notify: Restart Dock and Finder
+  - domain: com.apple.dock          # Dock: hide recent apps
+    key: show-recents
+    type: bool
+    value: false
+    notify: Restart Dock and Finder
+  - domain: com.apple.dock          # Dock: icon size (float — matches defaults(1))
+    key: tilesize
+    type: float
+    value: 32
+    notify: Restart Dock and Finder
+  - domain: com.apple.finder        # Finder: new window opens home folder
+    key: NewWindowTarget
+    type: string
+    value: PfHm
+    notify: Restart Dock and Finder
+  - domain: com.apple.finder
+    key: NewWindowTargetPath
+    type: string
+    value: "file://{{ home_dir }}/"
+    notify: Restart Dock and Finder
+  - domain: com.apple.AppleMultitouchTrackpad         # Trackpad: tap to click
+    key: Clicking
+    type: bool
+    value: true
+  - domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: Clicking
+    type: bool
+    value: true
+
+macos_rectangle_defaults:
+  - domain: com.knollsoft.Rectangle
+    key: launchOnLogin
+    type: bool
+    value: true
+  - domain: com.knollsoft.Rectangle
+    key: hideMenubarIcon
+    type: bool
+    value: true
+  - domain: com.knollsoft.Rectangle
+    key: allowAnyShortcut
+    type: bool
+    value: true
+  - domain: com.knollsoft.Rectangle
+    key: alternateDefaultShortcuts
+    type: bool
+    value: true

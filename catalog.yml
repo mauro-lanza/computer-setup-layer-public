@@ -1,0 +1,231 @@
+---
+# Catalog of optional packages offered by bootstrap.sh (public layer).
+# Merged (union by id) with other layers' catalogs; bootstrap reads it via yq.
+#
+# Schema:
+#   - id:       Stable identifier (used to remember prior y/N answers).
+#               Never rename; treat like a primary key.
+#   - desc:     Human-readable label shown in the prompt.
+#   - type:     formula | cask | vscode
+#   - packages: Space-separated list of brew formulae / casks / extension IDs
+#               installed when the user answers 'y'. Tap-qualified formula
+#               names (e.g. user/tap/formula) are supported — Homebrew taps
+#               automatically on install.
+#   - requires_vscode: (optional, bool) Only prompt if VS Code is selected
+#                      this run OR `code` is already on PATH.
+#
+# Adding a new item: append below with a unique id. That's it.
+
+catalog:
+  # ─── Formulae ─────────────────────────────────────────────────────────────
+  - id: nvm
+    desc: "Node Version Manager (nvm)"
+    type: formula
+    packages: nvm
+  - id: uv
+    desc: "Fast Python package manager (uv)"
+    type: formula
+    packages: uv
+  - id: tfenv
+    desc: "Terraform version manager (tfenv)"
+    type: formula
+    packages: tfenv
+  - id: docker-cli
+    desc: "Docker CLI + Buildx + Compose"
+    type: formula
+    packages: docker docker-buildx docker-compose
+    # Note: installing the formula gives a CLI that survives Docker Desktop
+    # being closed — required for using Colima as the runtime.
+  - id: colima
+    desc: "Colima (lightweight Docker runtime)"
+    type: formula
+    packages: colima
+  - id: mariadb
+    desc: "MariaDB database"
+    type: formula
+    packages: mariadb
+  - id: fswatch
+    desc: "File system watcher (fswatch)"
+    type: formula
+    packages: fswatch
+  - id: terraform-docs
+    desc: "Terraform documentation generator"
+    type: formula
+    packages: terraform-docs
+  - id: opencode
+    desc: "OpenCode CLI"
+    type: formula
+    packages: anomalyco/tap/opencode
+  - id: act
+    desc: "Run GitHub Actions locally (act)"
+    type: formula
+    packages: act
+  - id: ocrmypdf
+    desc: "OCR for PDFs (ocrmypdf)"
+    type: formula
+    packages: ocrmypdf
+  - id: ripgrep
+    desc: "Ripgrep (fast search)"
+    type: formula
+    packages: ripgrep
+  - id: bun
+    desc: "Bun (JS runtime & package manager)"
+    type: formula
+    packages: bun
+  - id: duckdb
+    desc: "DuckDB (in-process analytical SQL)"
+    type: formula
+    packages: duckdb
+  - id: tio
+    desc: "tio (serial device terminal)"
+    type: formula
+    packages: tio
+  - id: baobab
+    desc: "Baobab (disk usage analyzer)"
+    type: formula
+    packages: baobab
+
+  # ─── Casks ────────────────────────────────────────────────────────────────
+  - id: 1password
+    desc: "1Password"
+    type: cask
+    packages: 1password
+  - id: vscode
+    desc: "Visual Studio Code"
+    type: cask
+    packages: visual-studio-code
+  - id: firefox
+    desc: "Firefox browser"
+    type: cask
+    packages: firefox
+  - id: docker-desktop
+    desc: "Docker Desktop"
+    type: cask
+    packages: docker-desktop
+  - id: stats
+    desc: "Stats (system monitor)"
+    type: cask
+    packages: stats
+  - id: zed
+    desc: "Zed editor"
+    type: cask
+    packages: zed
+  - id: discord
+    desc: "Discord"
+    type: cask
+    packages: discord
+  - id: spotify
+    desc: "Spotify"
+    type: cask
+    packages: spotify
+  - id: obsidian
+    desc: "Obsidian notes"
+    type: cask
+    packages: obsidian
+  - id: postman
+    desc: "Postman API client"
+    type: cask
+    packages: postman
+  - id: notunes
+    desc: "noTunes (prevent Apple Music)"
+    type: cask
+    packages: notunes
+  - id: lm-studio
+    desc: "LM Studio (local LLMs)"
+    type: cask
+    packages: lm-studio
+  - id: gcloud
+    desc: "Google Cloud SDK (gcloud CLI)"
+    type: cask
+    packages: gcloud-cli
+  - id: orcaslicer
+    desc: "OrcaSlicer (3D print slicer)"
+    type: cask
+    packages: orcaslicer
+  - id: kicad
+    desc: "KiCad (EDA / PCB design)"
+    type: cask
+    packages: kicad
+
+  # ─── VS Code extensions ───────────────────────────────────────────────────
+  # Only prompted if VS Code is selected this run OR `code` is on PATH.
+  - id: vscode-path-intellisense
+    desc: "VS Code: Path Intellisense"
+    type: vscode
+    packages: christian-kohler.path-intellisense
+    requires_vscode: true
+  - id: vscode-dependi
+    desc: "VS Code: Dependi (dependency viewer)"
+    type: vscode
+    packages: fill-labs.dependi
+    requires_vscode: true
+  - id: vscode-excel-viewer
+    desc: "VS Code: Excel Viewer"
+    type: vscode
+    packages: grapecity.gc-excelviewer
+    requires_vscode: true
+  - id: vscode-rainbow-csv
+    desc: "VS Code: Rainbow CSV"
+    type: vscode
+    packages: mechatroner.rainbow-csv
+    requires_vscode: true
+  - id: vscode-compare-folders
+    desc: "VS Code: Compare Folders"
+    type: vscode
+    packages: moshfeu.compare-folders
+    requires_vscode: true
+  - id: vscode-jupyter
+    desc: "VS Code: Jupyter (full suite)"
+    type: vscode
+    packages: ms-toolsai.jupyter ms-toolsai.jupyter-keymap ms-toolsai.jupyter-renderers ms-toolsai.vscode-jupyter-cell-tags ms-toolsai.vscode-jupyter-slideshow
+    requires_vscode: true
+  - id: vscode-material-icons
+    desc: "VS Code: Material Icon Theme"
+    type: vscode
+    packages: pkief.material-icon-theme
+    requires_vscode: true
+  - id: vscode-data-preview
+    desc: "VS Code: Data Preview"
+    type: vscode
+    packages: randomfractalsinc.vscode-data-preview
+    requires_vscode: true
+  - id: vscode-toml
+    desc: "VS Code: Even Better TOML"
+    type: vscode
+    packages: tamasfe.even-better-toml
+    requires_vscode: true
+  - id: vscode-pdf
+    desc: "VS Code: PDF viewer"
+    type: vscode
+    packages: tomoki1207.pdf
+    requires_vscode: true
+  - id: vscode-remote-containers
+    desc: "VS Code: Remote Containers"
+    type: vscode
+    packages: ms-vscode-remote.remote-containers
+    requires_vscode: true
+  - id: vscode-better-comments
+    desc: "VS Code: Better Comments"
+    type: vscode
+    packages: aaron-bond.better-comments
+    requires_vscode: true
+  - id: vscode-regex
+    desc: "VS Code: Regex Previewer"
+    type: vscode
+    packages: chrmarti.regex
+    requires_vscode: true
+  - id: vscode-parquet-viewer
+    desc: "VS Code: Parquet Viewer"
+    type: vscode
+    packages: dvirtz.parquet-viewer
+    requires_vscode: true
+  - id: vscode-peacock
+    desc: "VS Code: Peacock (workspace colors)"
+    type: vscode
+    packages: johnpapa.vscode-peacock
+    requires_vscode: true
+  - id: vscode-dbt-power-user
+    desc: "VS Code: dbt Power User"
+    type: vscode
+    packages: innoverio.vscode-dbt-power-user
+    requires_vscode: true
