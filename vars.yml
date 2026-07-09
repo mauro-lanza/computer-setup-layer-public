@@ -6,7 +6,7 @@
 # ─── Homebrew baseline (homebrew role) ───────────────────────────────────────
 # Formulae always installed. git/gh/yq/ansible are also bootstrap prerequisites
 # (installed in Phase 0); listing them here keeps them under drift management.
-homebrew_mandatory_formulae:
+homebrew_baseline_formulae:
   - git
   - gh
   - jq
@@ -21,7 +21,7 @@ homebrew_mandatory_formulae:
   - zsh-fast-syntax-highlighting
 
 # Casks always installed.
-homebrew_mandatory_casks:
+homebrew_baseline_casks:
   - rectangle
 
 # Casks safe to `--adopt` when already present in /Applications but not
@@ -35,7 +35,7 @@ homebrew_adopt_casks:
   - spotify
 
 # ─── VS Code baseline (vscode role) ──────────────────────────────────────────
-vscode_mandatory_extensions:
+vscode_baseline_extensions:
   - charliermarsh.ruff
   - esbenp.prettier-vscode
   - eamodio.gitlens
