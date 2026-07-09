@@ -22,7 +22,7 @@
 #
 # Adding a new item: append below with a unique id. That's it.
 
-catalog:
+capabilities:
   # ─── Formulae ─────────────────────────────────────────────────────────────
   - id: nvm
     desc: "Node Version Manager (nvm)"

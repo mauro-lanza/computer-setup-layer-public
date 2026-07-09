@@ -9,7 +9,7 @@ Shareable baseline that any adopter can use as-is or fork.
 |---|---|
 | `plugin.yml` | Manifest: `name: public`, `priority: 10`, `schema_version: 1` |
 | `vars.yml` | Baseline Homebrew formulae/casks/adopt list + VS Code extensions |
-| `catalog.yml` | Generic optional-tools menu merged into bootstrap's prompt |
+| `capabilities.yml` | Generic optional-tools menu merged into bootstrap's prompt |
 | `files/p10k.zsh` | Powerlevel10k prompt config (shell role) |
 | `files/vscode/settings.json` | VS Code user settings (vscode role) |
 | `files/zed/settings.json` | Zed editor settings (zed role) |
