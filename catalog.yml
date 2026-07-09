@@ -1,18 +1,21 @@
 ---
-# Catalog of optional packages offered by bootstrap.sh (public layer).
-# Merged (union by id) with other layers' catalogs; bootstrap reads it via yq.
+# Capability catalog (public layer). Each entry is a selectable capability whose
+# `id` is the selection token. Merged (union by id) with other layers' catalogs
+# into the bootstrap menu and the engine's capability registry.
 #
 # Schema:
-#   - id:       Stable identifier (used to remember prior y/N answers).
+#   - id:       Stable capability token (used to remember prior answers).
 #               Never rename; treat like a primary key.
 #   - desc:     Human-readable label shown in the prompt.
-#   - type:     formula | cask | vscode
-#   - packages: Space-separated list of brew formulae / casks / extension IDs
-#               installed when the user answers 'y'. Tap-qualified formula
-#               names (e.g. user/tap/formula) are supported — Homebrew taps
-#               automatically on install.
+#   - type:     formula | cask | vscode | feature   (feature = no package)
+#   - packages: Space-separated brew formulae / casks / extension IDs installed
+#               when selected (omit for `feature`). Tap-qualified formula names
+#               (e.g. user/tap/formula) are supported — Homebrew taps on install.
 #   - requires_vscode: (optional, bool) Only prompt if VS Code is selected
 #                      this run OR `code` is already on PATH.
+#   - config:   (optional) files/templates deployed when the capability is active
+#               (highest-priority layer supplies the file):
+#                 - { src: <layer file key>, dest: <path>, kind: file|template }
 #
 # Adding a new item: append below with a unique id. That's it.
 
@@ -56,6 +59,11 @@ catalog:
     desc: "OpenCode CLI"
     type: formula
     packages: anomalyco/tap/opencode
+    # The GitHub MCP token is injected at runtime via OC_GITHUB_PERSONAL_ACCESS_TOKEN
+    # ({env:...} in the config) — no secret is stored.
+    config:
+      - src: opencode.json
+        dest: "{{ home_dir }}/.config/opencode/opencode.json"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     type: formula
@@ -110,6 +118,9 @@ catalog:
     desc: "Zed editor"
     type: cask
     packages: zed
+    config:
+      - src: zed/settings.json
+        dest: "{{ home_dir }}/.config/zed/settings.json"
   - id: discord
     desc: "Discord"
     type: cask
