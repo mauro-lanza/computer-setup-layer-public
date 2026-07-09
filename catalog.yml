@@ -16,6 +16,8 @@
 #   - config:   (optional) files/templates deployed when the capability is active
 #               (highest-priority layer supplies the file):
 #                 - { src: <layer file key>, dest: <path>, kind: file|template }
+#   - adopt_if_present: (optional) a path; when it exists the capability is
+#               treated as active even if not selected (adopt an existing install).
 #
 # Adding a new item: append below with a unique id. That's it.
 
@@ -25,6 +27,7 @@ catalog:
     desc: "Node Version Manager (nvm)"
     type: formula
     packages: nvm
+    adopt_if_present: /opt/homebrew/opt/nvm/nvm.sh
   - id: uv
     desc: "Fast Python package manager (uv)"
     type: formula
@@ -33,6 +36,7 @@ catalog:
     desc: "Terraform version manager (tfenv)"
     type: formula
     packages: tfenv
+    adopt_if_present: /opt/homebrew/bin/tfenv
   - id: docker-cli
     desc: "Docker CLI + Buildx + Compose"
     type: formula
@@ -102,6 +106,7 @@ catalog:
     desc: "Visual Studio Code"
     type: cask
     packages: visual-studio-code
+    adopt_if_present: "{{ vscode_code_binary }}"
   - id: firefox
     desc: "Firefox browser"
     type: cask
@@ -149,6 +154,9 @@ catalog:
     desc: "Google Cloud SDK (gcloud CLI)"
     type: cask
     packages: gcloud-cli
+    # Homebrew install location (NOT ~/google-cloud-sdk, which is the deprecated
+    # manual install path). Present ⇒ adopt and keep the gcloud config managed.
+    adopt_if_present: /opt/homebrew/share/google-cloud-sdk
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
     type: cask
