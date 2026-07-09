@@ -18,6 +18,7 @@
 #                 - { src: <layer file key>, dest: <path>, kind: file|template }
 #   - adopt_if_present: (optional) a path; when it exists the capability is
 #               treated as active even if not selected (adopt an existing install).
+#   - reminders: (optional) list of post-setup message strings shown when active.
 #
 # Adding a new item: append below with a unique id. That's it.
 
@@ -63,6 +64,7 @@ catalog:
     desc: "OpenCode CLI"
     type: formula
     packages: anomalyco/tap/opencode
+    adopt_if_present: /opt/homebrew/bin/opencode
     # The GitHub MCP token is injected at runtime via OC_GITHUB_PERSONAL_ACCESS_TOKEN
     # ({env:...} in the config) — no secret is stored.
     config:
@@ -102,6 +104,7 @@ catalog:
     desc: "1Password"
     type: cask
     packages: 1password
+    reminders: ["Open 1Password and sign in"]
   - id: vscode
     desc: "Visual Studio Code"
     type: cask
@@ -157,6 +160,7 @@ catalog:
     # Homebrew install location (NOT ~/google-cloud-sdk, which is the deprecated
     # manual install path). Present ⇒ adopt and keep the gcloud config managed.
     adopt_if_present: /opt/homebrew/share/google-cloud-sdk
+    reminders: ["Run: gcloud auth login (if using GCP)"]
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
     type: cask
