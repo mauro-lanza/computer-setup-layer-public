@@ -123,6 +123,16 @@
     "redhat.telemetry.enabled": false,
     "todo-tree.ripgrep.ripgrep": "/opt/homebrew/bin/rg",
 
+    // Don't apply YAML schemas to CI workflow files (GitHub/Gitea/Forgejo).
+    "yaml.disableSchemaDetection": [
+        "**/.github/workflows/*.yml",
+        "**/.github/workflows/*.yaml",
+        "**/.gitea/workflows/*.yml",
+        "**/.gitea/workflows/*.yaml",
+        "**/.forgejo/workflows/*.yml",
+        "**/.forgejo/workflows/*.yaml"
+    ],
+
     // Peacock Colors
     "peacock.favoriteColors": [
         {"name": "Angular Red", "value": "#dd0531"},
