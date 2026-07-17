@@ -15,7 +15,8 @@
 #                      this run OR `code` is already on PATH.
 #   - config:   (optional) files/templates deployed when the capability is active
 #               (highest-priority layer supplies the file):
-#                 - { src: <layer file key>, dest: <path>, kind: file|template }
+#                 - { src: <layer file key>, dest: <path>, kind: file|template,
+#                     mode: <octal string, default "0644"> }
 #   - adopt_if_present: (optional) a path; when it exists the capability is
 #               treated as active even if not selected (adopt an existing install).
 #   - reminders: (optional) list of post-setup message strings shown when active.
@@ -98,6 +99,18 @@ capabilities:
     desc: "Baobab (disk usage analyzer)"
     type: formula
     packages: baobab
+
+  # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
+  # A collection of standalone tools with no package to install — each is
+  # just a script deployed to ~/.local/bin (already on PATH via path.zsh).
+  # To add another: drop the file in files/scripts/ and add an entry here.
+  - id: check-merged-branches
+    desc: "check_merged_branches (clean up local branches whose PRs already merged)"
+    type: feature
+    config:
+      - src: scripts/check_merged_branches.sh
+        dest: "{{ home_dir }}/.local/bin/check_merged_branches.sh"
+        mode: "0755"
 
   # ─── Casks ────────────────────────────────────────────────────────────────
   - id: 1password
