@@ -99,6 +99,15 @@ capabilities:
     desc: "Baobab (disk usage analyzer)"
     type: formula
     packages: baobab
+  - id: eim
+    desc: "Espressif IDE Manager (ESP-IDF toolchain)"
+    type: formula
+    packages: espressif/eim/eim
+    adopt_if_present: /opt/homebrew/bin/eim
+  - id: tectonic
+    desc: "Tectonic (self-contained LaTeX engine)"
+    type: formula
+    packages: tectonic
 
   # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
   # A collection of standalone tools with no package to install — each is
@@ -182,6 +191,14 @@ capabilities:
     desc: "KiCad (EDA / PCB design)"
     type: cask
     packages: kicad
+  - id: antigravity
+    desc: "Antigravity (Google AI IDE)"
+    type: cask
+    packages: antigravity
+  - id: opencode-desktop
+    desc: "OpenCode Desktop (GUI companion to the OpenCode CLI)"
+    type: cask
+    packages: opencode-desktop
 
   # ─── VS Code extensions ───────────────────────────────────────────────────
   # Only prompted if VS Code is selected this run OR `code` is on PATH.
