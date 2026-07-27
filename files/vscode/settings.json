@@ -214,5 +214,6 @@
         "/^git(\\s+(-C\\s+\\S+|--no-pager))*\\s+branch\\b.*\\s-(d|D|m|M|-delete|-force)\\b/": false,
         "git remote": true,
         "terraform fmt": true,
+        "git add": true,
     },
 }
