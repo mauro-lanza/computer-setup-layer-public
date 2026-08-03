@@ -119,3 +119,17 @@ macos_rectangle_defaults:
     key: alternateDefaultShortcuts
     type: bool
     value: true
+
+# ─── Upgrade policy (upgrade role) ───────────────────────────────────────────
+# Casks drift-update must not try to upgrade. They stay installed and managed by
+# the homebrew role; only the upgrade is skipped.
+#
+# docker-desktop deletes files it owns as root during an upgrade. Homebrew shells
+# out to `sudo`, and an Ansible task has no controlling terminal, so that sudo can
+# never prompt — it fails with "a terminal is required to read the password".
+# Caching the credential with `sudo -v` beforehand was tried and does not help.
+# Docker Desktop updates itself (auto_updates), so nothing is lost. To force one
+# by hand, from a real shell where sudo CAN prompt:
+#     brew upgrade --cask docker-desktop
+upgrade_casks_exclude:
+  - docker-desktop
