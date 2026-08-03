@@ -108,6 +108,27 @@ capabilities:
     desc: "Tectonic (self-contained LaTeX engine)"
     type: formula
     packages: tectonic
+  - id: gemini-cli
+    desc: "Gemini CLI"
+    type: formula
+    packages: gemini-cli
+    adopt_if_present: /opt/homebrew/bin/gemini
+  - id: crane
+    desc: "crane (container registry / image tool)"
+    type: formula
+    packages: crane
+  - id: poppler
+    desc: "Poppler PDF utilities (pdftotext, pdfimages, ...)"
+    type: formula
+    packages: poppler
+  - id: python-311
+    desc: "Python 3.11 (pinned interpreter alongside the 3.14 baseline)"
+    type: formula
+    packages: python@3.11
+  - id: bitmap-fonts
+    desc: "Bitmap font conversion tools (bdftopcf, otf2bdf)"
+    type: formula
+    packages: bdftopcf otf2bdf
 
   # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
   # A collection of standalone tools with no package to install — each is
@@ -281,4 +302,9 @@ capabilities:
     desc: "VS Code: dbt Power User"
     type: vscode
     packages: innoverio.vscode-dbt-power-user
+    requires_vscode: true
+  - id: vscode-html-preview
+    desc: "VS Code: HTML Preview"
+    type: vscode
+    packages: george-alisson.html-preview-vscode
     requires_vscode: true
