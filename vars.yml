@@ -34,21 +34,15 @@ homebrew_adopt_casks:
   - discord
   - spotify
 
-# ─── VS Code baseline (vscode role) ──────────────────────────────────────────
-vscode_baseline_extensions:
-  - charliermarsh.ruff
-  - esbenp.prettier-vscode
-  - eamodio.gitlens
-  - github.vscode-github-actions
-  - github.vscode-pull-request-github
-  - ms-python.python
-  - ms-python.vscode-pylance
-  - hashicorp.terraform
-  - redhat.vscode-yaml
-  - shinichi-takii.sql-bigquery
-  - sqlfluff.vscode-sqlfluff
-  - gruntfuggly.todo-tree
-  - samuelcolvin.jinjahtml
+# ─── VS Code ─────────────────────────────────────────────────────────────────
+# Extensions now live in the `vscode-extensions` capability in capabilities.yml
+# as a single all-or-nothing group, so bootstrap asks one question instead of
+# one per extension.
+#
+# `vscode_baseline_extensions` is still an engine interface: list any extension
+# here that must be installed whenever VS Code is active, regardless of whether
+# the pack was selected. Left empty deliberately — "all or none" is the point.
+vscode_baseline_extensions: []
 
 # ─── git (git role) ──────────────────────────────────────────────────────────
 git_default_branch: main
