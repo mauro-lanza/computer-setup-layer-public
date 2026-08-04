@@ -1,0 +1,56 @@
+---
+# Machine decisions this layer offers. Merged (union by id) across layers like
+# capabilities, and prompted by bootstrap; the answers live in ~/.mac-prefs.yml.
+#
+# Capabilities can only express "yes/no, independently". A question expresses a
+# decision with one answer — which editor, where things live — which previously
+# had no representation and so got hardcoded in engine code.
+#
+# Schema per item:
+#   id:       stable token (primary key; never rename — it keys the stored answer)
+#   type:     select | bool | text | path
+#   desc:     label shown in the bootstrap prompt
+#   default:  answer used when unanswered (a fresh machine, or a question added
+#             after this machine's prefs file was written)
+#   set_var:  (optional) assign the raw answer to this variable
+#   options:  (select only) list of:
+#               value:   the stored answer
+#               desc:    label
+#               set:     (optional) literal vars applied when chosen
+#               implies: (optional) capability ids added to the selection
+#
+# A `set:` payload obeys the same reserved-key guard as vars.yml — a question
+# cannot reach further than the layer's own vars can.
+
+questions:
+  # The editor decision used to be implicit: the engine stat'd the VS Code
+  # binary and wrote `code --wait` into core.editor if it existed, with vim as
+  # the only fallback and no way to say otherwise. Nothing set $EDITOR at all,
+  # so git and the shell could disagree. Both now derive from this one answer.
+  #
+  # This governs the DEFAULT EDITOR only. Installing an editor is still a
+  # capability, and an already-installed editor is still adopted and kept
+  # configured — choosing zed does not uninstall VS Code or stop managing its
+  # settings.
+  - id: editor
+    type: select
+    desc: "Default editor (git core.editor and $EDITOR)"
+    default: vscode
+    options:
+      - value: vscode
+        desc: "Visual Studio Code"
+        implies: [vscode]
+        set:
+          git_editor: "code --wait"
+          editor_command: "code"
+      - value: zed
+        desc: "Zed"
+        implies: [zed]
+        set:
+          git_editor: "zed --wait"
+          editor_command: "zed"
+      - value: none
+        desc: "Leave unmanaged — respect whatever $EDITOR is already set to"
+        set:
+          git_editor: ""
+          editor_command: ""
