@@ -138,8 +138,8 @@ capabilities:
     desc: "check_merged_branches (clean up local branches whose PRs already merged)"
     type: feature
     config:
-      - src: scripts/check_merged_branches.sh
-        dest: "{{ home_dir }}/.local/bin/check_merged_branches.sh"
+      - src: scripts/check_merged_branches
+        dest: "{{ home_dir }}/.local/bin/check_merged_branches"
         mode: "0755"
 
   # ─── Casks ────────────────────────────────────────────────────────────────

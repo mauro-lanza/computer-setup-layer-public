@@ -1,6 +1,16 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Checks which local branches have associated PRs that were already merged,
 # offers to delete them, then reports branches with unpushed commits.
+#
+# TARGETS BASH 3.2. macOS ships bash 3.2 as /bin/bash and always will (the
+# license changed at 4.0), `bash` is not a managed formula, and this script is
+# deployed to ~/.local/bin where it may be invoked from any context — so
+# `#!/bin/bash` resolves to 3.2 on a stock machine. Two 3.2 rules apply
+# throughout:
+#   * no `mapfile`/`readarray` (added in 4.0)
+#   * `"${arr[@]}"` on an EMPTY array is an "unbound variable" fatal under
+#     `set -u` (fixed in 4.4), so every expansion uses the
+#     `${arr[@]+"${arr[@]}"}` guard, which expands to nothing when unset/empty.
 
 set -euo pipefail
 
@@ -22,15 +32,23 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
   | sed 's@^refs/remotes/origin/@@' || true)
 default_branch=${default_branch:-master}
 
-# Collect local branches once.
-mapfile -t branches < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+# Collect local branches once. (`mapfile` would be the obvious tool; see header.)
+branches=()
+while IFS= read -r _branch; do
+  branches+=("$_branch")
+done < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+
+if [[ ${#branches[@]} -eq 0 ]]; then
+  echo "No local branches found."
+  exit 0
+fi
 
 echo "Checking local branches for merged PRs..."
 echo ""
 
 merged_branches=()
 
-for branch in "${branches[@]}"; do
+for branch in ${branches[@]+"${branches[@]}"}; do
   # Skip the default branch and the branch currently checked out.
   if [[ "$branch" == "$default_branch" || "$branch" == "$current_branch" ]]; then
     continue
@@ -75,10 +93,10 @@ echo ""
 
 unpushed_found=0
 
-for branch in "${branches[@]}"; do
+for branch in ${branches[@]+"${branches[@]}"}; do
   # Skip branches already flagged as merged (and possibly deleted).
   skip=0
-  for merged in "${merged_branches[@]}"; do
+  for merged in ${merged_branches[@]+"${merged_branches[@]}"}; do
     [[ "$branch" == "$merged" ]] && skip=1 && break
   done
   [[ $skip -eq 1 ]] && continue

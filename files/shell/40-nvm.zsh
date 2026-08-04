@@ -1,7 +1,7 @@
 # Managed by computer-setup (layer: public) — do not edit manually
 # cs:requires-capability: nvm
-# Only deployed when the `nvm` capability is selected (see catalog.yml). Without
-# this directive the snippet would be deployed to every machine.
+# Only deployed when the `nvm` capability is active (see capabilities.yml).
+# Without the directive above the snippet would be deployed to every machine.
 # Sourcing nvm.sh eagerly costs ~700ms per shell. Instead we:
 #   1. Resolve the *default* Node version by walking the alias chain and put
 #      only its bin/ on PATH (a few cheap file reads) so node/npm/npx work
