@@ -179,5 +179,14 @@ ai_default_model: "github-copilot/claude-opus-4.8"
 # Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
 ai_chat_model: "claude-sonnet-4.6"
 
+# Font for the integrated terminals. Powerlevel10k runs in `powerline` mode with
+# POWERLEVEL9K_ICON_PADDING=none, which assumes icons occupy exactly ONE cell —
+# so the Mono variant, not the proportional default. Provided by the
+# font-meslo-lg-nerd-font cask above.
+#
+# Read by the vscode and zed settings templates so the two cannot drift; the
+# shell cannot set this, since the font belongs to whatever renders the glyphs.
+terminal_font_family: "MesloLGS Nerd Font Mono"
+
 # Model id in GitLens' "<vendor>:<model>" form.
 ai_gitlens_model: "copilot:gpt-4.1"
