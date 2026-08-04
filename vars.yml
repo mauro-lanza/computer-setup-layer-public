@@ -129,3 +129,20 @@ macos_rectangle_defaults:
 # they no longer need excluding. Add a cask here if you want its own updater to
 # own the job entirely.
 upgrade_casks_exclude: []
+
+# ─── Shared values consumed by config TEMPLATES ──────────────────────────────
+# These exist so one decision lives in one place. They are read by this layer's
+# templates/ (rendered late, after the layer merge), NOT by other vars in this
+# file — a layer var cannot reference another layer var (see docs/architecture.md).
+# Anything derivable from a list above is derived in the template instead of
+# being restated here; see files/shell/20-aliases.zsh.j2 for the Python version.
+
+# Provider-prefixed model id, as opencode and Zed's agent_servers expect.
+# Read by templates/opencode.json.j2 and templates/zed/settings.json.j2.
+ai_default_model: "github-copilot/claude-opus-4.8"
+
+# Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
+ai_chat_model: "claude-sonnet-4.6"
+
+# Model id in GitLens' "<vendor>:<model>" form.
+ai_gitlens_model: "copilot:gpt-4.1"

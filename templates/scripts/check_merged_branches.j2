@@ -1,4 +1,10 @@
-#!/bin/bash
+{#
+  Shell + Jinja hazard: this script uses bash array-length syntax `${#name[@]}`,
+  and Jinja reads `{#` as a comment opener. The body is therefore wrapped in
+  {% raw %} blocks, and only the one templated line below sits outside them.
+  Keep it that way when editing.
+#}
+{% raw %}#!/bin/bash
 # Checks which local branches have associated PRs that were already merged,
 # offers to delete them, then reports branches with unpushed commits.
 #
@@ -30,7 +36,7 @@ fi
 current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
   | sed 's@^refs/remotes/origin/@@' || true)
-default_branch=${default_branch:-master}
+{% endraw %}default_branch=${default_branch:-{{ git_default_branch }}}{% raw %}
 
 # Collect local branches once. (`mapfile` would be the obvious tool; see header.)
 branches=()
@@ -123,3 +129,4 @@ done
 if [[ $unpushed_found -eq 0 ]]; then
   echo "All branches are up to date with their remotes."
 fi
+{% endraw %}

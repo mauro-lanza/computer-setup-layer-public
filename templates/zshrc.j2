@@ -52,13 +52,13 @@ done
 unset _cs_snippet
 
 # ─── Powerlevel10k theme ──────────────────────────────────────────────────────
-[[ -r "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme" ]] && \
-  source "/opt/homebrew/share/powerlevel10k/powerlevel10k.zsh-theme"
+[[ -r "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme" ]] && \
+  source "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme"
 [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
 
 # ─── Plugins (Homebrew) ───────────────────────────────────────────────────────
 # Order matters: autosuggestions first, syntax highlighting LAST.
-[[ -r "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
-  source "/opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-[[ -r "/opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]] && \
-  source "/opt/homebrew/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+[[ -r "{{ homebrew_prefix }}/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
+  source "{{ homebrew_prefix }}/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+[[ -r "{{ homebrew_prefix }}/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]] && \
+  source "{{ homebrew_prefix }}/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"

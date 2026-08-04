@@ -30,7 +30,7 @@ export NVM_DIR="$HOME/.nvm"
 # re-runs with the original arguments.
 nvm() {
   unset -f nvm
-  [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-  [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+  [ -s "{{ homebrew_prefix }}/opt/nvm/nvm.sh" ] && \. "{{ homebrew_prefix }}/opt/nvm/nvm.sh"
+  [ -s "{{ homebrew_prefix }}/opt/nvm/etc/bash_completion.d/nvm" ] && \. "{{ homebrew_prefix }}/opt/nvm/etc/bash_completion.d/nvm"
   nvm "$@"
 }
