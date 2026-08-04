@@ -43,6 +43,7 @@
     "explorer.confirmDragAndDrop": false,
     "explorer.confirmDelete": false,
     "update.showReleaseNotes": false,
+    "workbench.experimental.modernUI": false,
 
     // Editor
     "editor.linkedEditing": true,
@@ -50,6 +51,7 @@
     "editor.guides.bracketPairsHorizontal": "active",
     "editor.renderWhitespace": "all",
     "editor.minimap.enabled": false,
+
 
     // Files
     "files.trimTrailingWhitespace": true,
