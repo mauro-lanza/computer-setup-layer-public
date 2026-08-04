@@ -1,0 +1,70 @@
+---
+# Named starting points for bootstrap. A preset is a PURE PREFILL: it supplies
+# the defaults the prompts start from and is never recorded in ~/.mac-prefs.yml.
+# A machine set up from a preset is indistinguishable from one answered by hand,
+# so these can be edited freely without reconfiguring machines that used them.
+#
+# They exist because "every decision is re-answerable" and "bootstrap asks 50+
+# questions" are the same statement. Pick a preset, decline the review, done.
+#
+# Schema per item:
+#   id:            stable token
+#   desc:          label shown in the bootstrap menu
+#   answers:       question id -> answer (see questions.yml)
+#   capabilities:  capability ids pre-selected (see capabilities.yml)
+
+presets:
+  # Everything this layer offers except the hardware/hobby and one-off tools —
+  # i.e. the machine as currently run.
+  - id: full
+    desc: "Full workstation — development, data tooling, and desktop apps"
+    answers:
+      editor: vscode
+      drift-agents: "true"
+    capabilities:
+      # Runtimes and package tooling
+      - nvm
+      - uv
+      - tfenv
+      - python-311
+      # Development
+      - ansible-lint
+      - docker-cli
+      - colima
+      - fswatch
+      - terraform-docs
+      - ripgrep
+      - bun
+      - duckdb
+      - act
+      - check-merged-branches
+      - mariadb
+      # AI / editors
+      - opencode
+      - vscode
+      - vscode-extensions
+      - zed
+      - gemini-cli
+      # Cloud
+      - gcloud
+      # Desktop
+      - 1password
+      - firefox
+      - stats
+      - obsidian
+      - postman
+      - notunes
+      - spotify
+      - discord
+
+  # Enough to work in a terminal and clone repositories. Nothing desktop, no
+  # editor beyond whatever is already installed, and no unattended agents —
+  # useful for a VM, a borrowed machine, or a first pass you refine later.
+  - id: minimal
+    desc: "Minimal — shell, git, and core CLI tools only"
+    answers:
+      editor: none
+      drift-agents: "false"
+    capabilities:
+      - ripgrep
+      - uv
