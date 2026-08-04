@@ -1,9 +1,5 @@
 name: public
 schema_version: 1
-# Merge order: lower priority is applied first, higher wins on scalar conflicts.
-# public (10) < personal (20) < work (30). Lists append across all layers.
-priority: 10
-provides: [capabilities, vars, files]
 description: >-
   Shareable content: baseline Homebrew tools, VS Code extensions + settings,
   the zsh Powerlevel10k prompt, Zed and opencode configs, and a generic optional

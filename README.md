@@ -7,7 +7,7 @@ Shareable baseline that any adopter can use as-is or fork.
 
 | File | Purpose |
 |---|---|
-| `plugin.yml` | Manifest: `name: public`, `priority: 10`, `schema_version: 1` |
+| `layer.yml` | Manifest: `name: public`, `schema_version: 1` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
 | `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, upgrade policy |
 | `files/zshrc` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
@@ -24,9 +24,18 @@ data. A capability declares `config: [{ src, dest, kind }]` and the generic
 
 ## How it's used
 
-The orchestrator clones this into `~/.local/share/computer-setup/plugins/public/`
-and merges it lowest-priority (10). Its list vars append with the personal/work
-layers; its files are overridable by a higher-priority layer that ships the same
-key. See the [contract](https://github.com/mauro-lanza/computer-setup/blob/main/docs/architecture.md).
+Cloned into `~/.local/share/computer-setup/layers/public/` and merged at the
+lowest priority, so any other layer can override it. Priority is set in the
+machine's layer manifest, not here. See the
+[contract](https://github.com/mauro-lanza/computer-setup/blob/main/docs/architecture.md)
+for the merge rules.
+
+Two things in `vars.yml` worth knowing when editing:
+
+- **`homebrew_adopt_casks`** is the allow-list of casks safe to `--adopt` when
+  already installed manually. Casks with protected payloads (`docker-desktop`,
+  `zed`) must not be added — adoption can leave no app installed at all.
+- **`files/shell/10-path.zsh`** owns PATH order, and puts `~/.local/bin` ahead of
+  `/opt/homebrew/bin`. A manually-installed binary there shadows the managed one.
 
 Contains no secrets and no personal data — safe to keep public.
