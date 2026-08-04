@@ -54,3 +54,35 @@ questions:
         set:
           git_editor: ""
           editor_command: ""
+
+  # Where repositories are cloned. This was `~/Projects` hardcoded as a play var
+  # in the engine AND reserved, so no layer could change it, and the CLI's
+  # repos-generate carried a second independent copy of the literal. It is a
+  # machine decision, so it is answered here and the CLI renders the answer.
+  - id: repositories-dir
+    type: path
+    desc: "Where repositories are cloned"
+    default: "{{ home_dir }}/Projects"
+    set_var: repositories_base_dir
+
+  # The two scheduled LaunchAgents (09:00 upgrade, 10:00 drift check) were not
+  # optional and their hours were reserved. An unattended daily ansible-pull is
+  # a real decision, so it gets asked. Saying no keeps the drift-* CLI helpers
+  # and installs no agents.
+  - id: drift-agents
+    type: bool
+    desc: "Install the scheduled daily upgrade and drift-check agents"
+    default: "true"
+    set_var: drift_correction_enabled
+
+  - id: drift-upgrade-hour
+    type: text
+    desc: "Hour of the daily unattended upgrade (0-23)"
+    default: "9"
+    set_var: drift_correction_upgrade_schedule_hour
+
+  - id: drift-check-hour
+    type: text
+    desc: "Hour of the daily drift check (0-23)"
+    default: "10"
+    set_var: drift_correction_schedule_hour
