@@ -13,6 +13,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, upgrade policy |
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
 | `files/shell/*.zsh[.j2]` | Snippets deployed into `~/.zsh/`, sourced by `zshrc` in filename order. A `# cs:requires-capability: <id>` line gates a snippet on a capability |
+| `files/p10k.zsh` + `font-meslo-lg-nerd-font` | The prompt runs in `powerline` mode, so the Nerd font cask is a baseline dependency. Installing it does not select it — set MesloLGS NF as the terminal profile font once |
 | `files/p10k.zsh` | Powerlevel10k prompt config |
 | `templates/vscode/settings.json.j2` | VS Code user settings (resolved by the `vscode` role) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |

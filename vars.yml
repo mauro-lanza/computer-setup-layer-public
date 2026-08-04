@@ -23,6 +23,11 @@ homebrew_baseline_formulae:
 # Casks always installed.
 homebrew_baseline_casks:
   - rectangle
+  # Powerlevel10k runs in `powerline` mode (files/p10k.zsh), which needs
+  # powerline/Nerd glyphs. Nothing installed a font providing them, so a fresh
+  # machine rendered the prompt as tofu boxes. Installing the font does NOT
+  # select it — set it as the terminal profile font once (MesloLGS NF).
+  - font-meslo-lg-nerd-font
 
 # Casks safe to `--adopt` when already present in /Applications but not
 # Homebrew-managed. Keep explicit: some casks with protected payloads can fail
