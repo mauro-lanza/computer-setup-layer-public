@@ -24,9 +24,16 @@ homebrew_baseline_formulae:
 homebrew_baseline_casks:
   - rectangle
   # Powerlevel10k runs in `powerline` mode (files/p10k.zsh), which needs
-  # powerline/Nerd glyphs. Nothing installed a font providing them, so a fresh
-  # machine rendered the prompt as tofu boxes. Installing the font does NOT
-  # select it — set it as the terminal profile font once (MesloLGS NF).
+  # powerline/Nerd glyphs, and nothing here declared a font providing them.
+  # It was installed by hand on the machine this layer was written from, so the
+  # gap was invisible until a REBUILD: a fresh machine got the prompt without
+  # the glyphs it assumes. Homebrew adopts the hand-installed copy rather than
+  # duplicating it.
+  #
+  # Meslo LG is Apple's Menlo (the macOS default mono) with disambiguated
+  # glyphs and Nerd Font icons, so it matches the system look. Installing it
+  # does NOT select it — set it as the terminal profile font once (MesloLGS NF
+  # is the variant Powerlevel10k's own wizard recommends).
   - font-meslo-lg-nerd-font
 
 # Casks safe to `--adopt` when already present in /Applications but not
