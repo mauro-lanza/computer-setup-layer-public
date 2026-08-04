@@ -34,6 +34,15 @@ capabilities:
     desc: "Fast Python package manager (uv)"
     type: formula
     packages: uv
+  - id: ansible-lint
+    desc: "ansible-lint (required to develop computer-setup itself)"
+    type: formula
+    packages: ansible-lint
+    # `scripts/check.sh` runs ansible-lint as a gate. Undeclared, it was the one
+    # tool on the machine that nothing installed — so a rebuilt Mac ran the gate
+    # with the linter missing and still exited 0. Adopt it wherever it already
+    # exists so an existing dev machine stays managed without re-selecting.
+    adopt_if_present: /opt/homebrew/bin/ansible-lint
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
     type: formula
