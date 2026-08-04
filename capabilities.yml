@@ -93,6 +93,11 @@ capabilities:
     desc: "Ripgrep (fast search)"
     type: formula
     packages: ripgrep
+    # Adopted when already installed: rg arrives as a dependency of other
+    # formulae, and the VS Code settings template points todo-tree at it only
+    # when this capability is active. Without adoption a machine with a working
+    # rg would have had that setting silently removed.
+    adopt_if_present: /opt/homebrew/bin/rg
   - id: bun
     desc: "Bun (JS runtime & package manager)"
     type: formula
