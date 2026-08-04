@@ -11,7 +11,8 @@
 #   - packages: Space-separated brew formulae / casks / extension IDs installed
 #               when selected (omit for `feature`). Tap-qualified formula names
 #               (e.g. user/tap/formula) are supported — Homebrew taps on install.
-#   - requires_vscode: (optional, bool) Only prompt if VS Code is selected
+#   - requires: (optional) another capability id; only prompt when that one is
+#               selected earlier in the run or already present
 #                      this run OR `code` is already on PATH.
 #   - config:   (optional) files/templates deployed when the capability is active
 #               (highest-priority layer supplies the file):
@@ -161,7 +162,7 @@ capabilities:
     desc: "Visual Studio Code"
     type: cask
     packages: visual-studio-code
-    adopt_if_present: "{{ vscode_code_binary }}"
+    adopt_if_present: "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
   - id: firefox
     desc: "Firefox browser"
     type: cask
@@ -244,14 +245,16 @@ capabilities:
   #
   # Machine-specific groups: a higher-priority layer adds its own capability
   # with a DIFFERENT id (e.g. `vscode-extensions-work` in the work layer). The
-  # engine concatenates the packages of every active `type: vscode` capability,
+  # engine concatenates the packages of every selected `type: extension`
+  # capability sharing a `manager:`,
   # so groups compose. Do NOT reuse the id below in another layer — capabilities
   # merge by id and the higher-priority one would replace this list wholesale
   # rather than extend it.
   - id: vscode-extensions
     desc: "VS Code: extension pack (33 extensions — all or nothing)"
-    type: vscode
-    requires_vscode: true
+    type: extension
+    manager: vscode
+    requires: vscode
     packages: >-
       charliermarsh.ruff
       esbenp.prettier-vscode
