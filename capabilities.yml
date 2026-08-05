@@ -68,6 +68,8 @@ capabilities:
     desc: "OpenCode CLI"
     type: formula
     packages: anomalyco/tap/opencode
+    # Third-party tap: the package cannot be resolved without it.
+    tap: anomalyco/tap
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
     # The GitHub MCP token is injected at runtime via OC_GITHUB_PERSONAL_ACCESS_TOKEN
     # ({env:...} in the config) — no secret is stored.
@@ -111,6 +113,8 @@ capabilities:
     desc: "Espressif IDE Manager (ESP-IDF toolchain)"
     type: formula
     packages: espressif/eim/eim
+    # Third-party tap: the package cannot be resolved without it.
+    tap: espressif/eim
     adopt_if_present: "{{ homebrew_prefix }}/bin/eim"
   - id: tectonic
     desc: "Tectonic (self-contained LaTeX engine)"
