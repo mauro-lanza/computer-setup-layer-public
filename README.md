@@ -14,7 +14,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
 | `files/shell/*.zsh[.j2]` | Snippets deployed into `~/.zsh/`, sourced by `zshrc` in filename order. A `# cs:requires-capability: <id>` line gates a snippet on a capability |
 | `presets.yml` | Named starting points (`full`, `minimal`) offered before the per-item prompts |
-| `files/p10k.zsh` | Powerlevel10k prompt config. The prompt runs in `powerline` mode, so the `font-meslo-lg-nerd-font` cask is a baseline dependency — set MesloLGS NF as the terminal profile font once |
+| `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the `font-meslo-lg-nerd-font` cask is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
 | `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
 | `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |

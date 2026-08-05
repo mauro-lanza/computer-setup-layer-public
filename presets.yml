@@ -11,8 +11,11 @@
 #   capabilities:  capability ids pre-selected (see capabilities.yml)
 
 presets:
-  # Everything this layer offers except the hardware/hobby and one-off tools —
-  # i.e. the machine as currently run.
+  # Everything this layer offers except the hardware/hobby and occasional tools —
+  # i.e. the machine as currently run. Deliberately excluded, and reported by
+  # `computer-setup layers lint` so the omission stays a choice rather than an
+  # oversight: bitmap-fonts, eim, kicad, orcaslicer, tio (hardware/3D/PCB),
+  # baobab, ocrmypdf, poppler, tectonic (occasional, install on demand).
   - id: full
     desc: "Full workstation — development, data tooling, and desktop apps"
     answers:
@@ -28,6 +31,7 @@ presets:
       - ansible-lint
       - shellcheck
       - docker-cli
+      - docker-desktop
       - colima
       - fswatch
       - terraform-docs
@@ -37,12 +41,16 @@ presets:
       - act
       - check-merged-branches
       - mariadb
+      - crane
       # AI / editors
       - opencode
+      - opencode-desktop
       - vscode
       - vscode-extensions
       - zed
       - gemini-cli
+      - antigravity
+      - lm-studio
       # Cloud
       - gcloud
       # Desktop

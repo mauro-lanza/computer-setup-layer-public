@@ -44,9 +44,18 @@
   typeset -g POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=()
 
   # Defines character set used by powerlevel10k.
-  typeset -g POWERLEVEL9K_MODE=powerline
+  #
+  # nerdfont-v3, not powerline: the segment icons below are Nerd Font glyphs, and
+  # the font-meslo-lg-nerd-font cask in vars.yml is a baseline dependency for
+  # exactly that reason. `powerline` used to be set here while every icon and
+  # separator was blanked out, so the mode selected a glyph set that was then
+  # never used — the prompt rendered zero Private Use Area glyphs and the font
+  # was baseline for no reason anyone could point at.
+  typeset -g POWERLEVEL9K_MODE=nerdfont-v3
   # When set to `moderate`, some icons will have an extra space after them. This is meant to avoid
   # icon overlap when using non-monospace fonts. When set to `none`, spaces are not added.
+  # `none` is correct here because MesloLGS NF *Mono* renders icons in exactly
+  # one cell; switching to the proportional variant would need `moderate`.
   typeset -g POWERLEVEL9K_ICON_PADDING=none
 
   # Basic style options that define the overall look of your prompt. You probably don't want to
@@ -55,7 +64,12 @@
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_{LEFT,RIGHT}_WHITESPACE=  # no surrounding whitespace
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_SUBSEGMENT_SEPARATOR=' '  # separate segments with a space
   typeset -g POWERLEVEL9K_{LEFT,RIGHT}_SEGMENT_SEPARATOR=        # no end-of-line symbol
-  typeset -g POWERLEVEL9K_VISUAL_IDENTIFIER_EXPANSION=           # no segment icons
+  # Segment icons ON (each segment's default Nerd Font glyph). The SEPARATORS
+  # above stay blank deliberately: this keeps the flat, transparent look and
+  # avoids the powerline block-arrow style, while still using the font for the
+  # one thing it is installed for. Set this back to empty for a text-only prompt
+  # — and then also drop font-meslo-lg-nerd-font from homebrew_baseline_casks,
+  # or the cask goes back to being unjustified.
 
   # When set to true, icons appear before content on both sides of the prompt. When set
   # to false, icons go after content. If empty or not set, icons go before content in the left
