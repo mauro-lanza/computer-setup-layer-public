@@ -1,11 +1,8 @@
 ---
-# Named starting points for bootstrap. A preset is a PURE PREFILL: it supplies
-# the defaults the prompts start from and is never recorded in ~/.config/computer-setup/prefs.yml.
-# A machine set up from a preset is indistinguishable from one answered by hand,
-# so these can be edited freely without reconfiguring machines that used them.
-#
-# They exist because "every decision is re-answerable" and "bootstrap asks 50+
-# questions" are the same statement. Pick a preset, decline the review, done.
+# Named starting points for bootstrap. A preset is a PURE PREFILL: it seeds the
+# prompts and is never itself recorded, so these can be edited freely without
+# reconfiguring machines that used them. See "Presets" in the engine's
+# docs/architecture.md.
 #
 # Schema per item:
 #   id:            stable token

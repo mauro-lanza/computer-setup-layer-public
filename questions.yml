@@ -1,45 +1,22 @@
 ---
 # Machine decisions this layer offers. Merged (union by id) across layers like
-# capabilities, and prompted by bootstrap; the answers live in ~/.config/computer-setup/prefs.yml.
+# capabilities, and prompted by bootstrap; the answers live in
+# ~/.config/computer-setup/prefs.yml.
 #
-# Capabilities express only "yes/no, independently". A question expresses a
-# decision with exactly one answer — which editor, where things live. If a
-# choice would otherwise have to be hardcoded in the engine, it is a question.
+# A capability expresses "yes/no, independently". A question expresses a decision
+# with exactly one answer — which editor, where things live. If a choice would
+# otherwise have to be hardcoded in the engine, it is a question.
 #
-# Schema per item:
-#   id:       stable token (primary key; never rename — it keys the stored answer)
-#   type:     select | bool | text | path
-#   desc:     label shown in the bootstrap prompt
-#   default:  answer used when unanswered (a fresh machine, or a question added
-#             after this machine's prefs file was written)
-#   set_var:  (optional) assign the raw answer to this variable
-#   validate: (optional, text/path only) a regex the answer must match.
-#             Checked TWICE, by two different engines: bash ERE at the bootstrap
-#             prompt, and Python `re` on apply (a prefs file is hand-editable).
-#             So stick to the common subset — plain classes like [^ @], +, *, ?,
-#             ^, $ and \. are safe. POSIX names ([[:space:]]) work in bash but
-#             NOT in Python; \s, \d and \w work in Python but are not POSIX ERE.
-#             A pattern only one engine understands passes the prompt and then
-#             fails every apply.
-#   options:  (select only) list of:
-#               value:   the stored answer
-#               desc:    label
-#               set:     (optional) literal vars applied when chosen
-#               implies: (optional) capability ids added to the selection
-#
-# A `set:` payload obeys the same reserved-key guard as vars.yml — a question
-# cannot reach further than the layer's own vars can.
+# Schema, the machine tier, and the rules for `validate` patterns (checked by two
+# different regex engines, so only their common subset is safe) are specified in
+# the engine: docs/architecture.md, "The question model". The reference layer at
+# examples/example-layer/questions.yml carries the field-by-field schema.
 
 questions:
   # ─── git identity ──────────────────────────────────────────────────────────
-  # Declared here with NO default so any adopter of this public layer is asked
-  # outright. A private layer overrides these by id to pre-fill its own account
-  # (see the personal layer), which is the point: an email address is a property
-  # of the ACCOUNT, not of the machine, so it should not be retyped per rebuild.
-  #
-  # git_user_name/git_user_email are machine-tier keys: a layer may PROPOSE them
-  # through a question, and the machine's answer outranks every layer var. A
-  # layer's vars.yml still cannot set them.
+  # No default: an adopter of this public layer is asked outright. A private
+  # layer overrides these by id to pre-fill its own account (see the personal
+  # layer) — an address belongs to the ACCOUNT, not the machine.
   - id: git-name
     type: text
     desc: "Git user.name"
@@ -52,17 +29,12 @@ questions:
     desc: "Git user.email"
     default: ""
     set_var: git_user_email
-    # Deliberately loose — enough to catch a typo or an empty answer, not to
-    # adjudicate RFC 5322. Prefer a GitHub noreply address for public commits.
+    # Deliberately loose — catches a typo or an empty answer, not RFC 5322.
     validate: "^[^ @]+@[^ @]+\\.[^ @]+$"
 
-  # One answer drives BOTH $EDITOR and git's core.editor, so the shell and git
-  # can never disagree.
-  #
-  # This governs the DEFAULT EDITOR only. Installing an editor is still a
-  # capability, and an already-installed editor is still adopted and kept
-  # configured — choosing zed does not uninstall VS Code or stop managing its
-  # settings.
+  # One answer drives BOTH $EDITOR and git's core.editor, so they cannot
+  # disagree. This governs the DEFAULT editor only: installing one is still a
+  # capability, and an already-installed editor is still adopted and configured.
   - id: editor
     type: select
     desc: "Default editor (git core.editor and $EDITOR)"
@@ -86,27 +58,21 @@ questions:
           git_editor: ""
           editor_command: ""
 
-  # Where repositories are cloned. This was `~/Projects` hardcoded as a play var
-  # in the engine AND reserved, so no layer could change it, and the CLI's
-  # repos-generate carried a second independent copy of the literal. It is a
-  # machine decision, so it is answered here and the CLI renders the answer.
+  # Where repositories are cloned — a machine-tier decision (see the engine's
+  # docs/architecture.md), so it is answered here rather than hardcoded.
   - id: repositories-dir
     type: path
     desc: "Where repositories are cloned"
     default: "{{ home_dir }}/Projects"
     set_var: repositories_base_dir
-    # NOT anchored to `^/` even though this must end up absolute: the default
-    # above is still the literal string "{{ home_dir }}/Projects" at prompt
-    # time (bootstrap does not render Jinja), and Ansible expands it on apply.
-    # An absolute-path anchor would therefore reject this file's own default.
-    # This catches the real failure modes instead — empty, or containing a
-    # space that would break the shell CLI that renders the answer.
+    # NOT anchored to `^/`: at prompt time the default is still the literal
+    # "{{ home_dir }}/Projects" (bootstrap does not render Jinja), so an
+    # absolute-path anchor would reject this file's own default. Catches the
+    # real failures instead — empty, or containing a space.
     validate: "^[^ ]+$"
 
-  # The two scheduled LaunchAgents (09:00 upgrade, 10:00 drift check) were not
-  # optional and their hours were reserved. An unattended daily ansible-pull is
-  # a real decision, so it gets asked. Saying no keeps the drift-* CLI helpers
-  # and installs no agents.
+  # An unattended daily ansible-pull is a real decision, so it gets asked.
+  # Saying no keeps the `computer-setup` command and installs no agents.
   - id: drift-agents
     type: bool
     desc: "Install the scheduled daily upgrade and drift-check agents"
@@ -118,9 +84,8 @@ questions:
     desc: "Hour of the daily unattended upgrade (0-23)"
     default: "9"
     set_var: drift_correction_upgrade_schedule_hour
-    # This value is written verbatim into a LaunchAgent plist, where a
-    # non-integer silently produces an agent that never fires. Alternation and
-    # plain classes only, so bash ERE and Python `re` agree.
+    # Written verbatim into a LaunchAgent plist, where a non-integer silently
+    # produces an agent that never fires.
     validate: "^([0-9]|1[0-9]|2[0-3])$"
 
   - id: drift-check-hour
