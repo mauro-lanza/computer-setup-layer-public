@@ -49,8 +49,7 @@ homebrew_adopt_casks:
 # ─── Editors ─────────────────────────────────────────────────────────────────
 # Extensions live in the `vscode-extensions` capability in capabilities.yml as a
 # single all-or-nothing group, so bootstrap asks one question instead of one per
-# extension. (`extension_baseline` would force extensions regardless of that
-# choice; this layer deliberately sets none.)
+# extension.
 
 # Editor extension managers. The engine names no editor — it loops over this
 # list, so switching to VSCodium or Cursor, or managing two editors at once, is
