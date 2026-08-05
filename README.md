@@ -13,15 +13,15 @@ Shareable baseline that any adopter can use as-is or fork.
 | `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, upgrade policy |
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
 | `files/shell/*.zsh[.j2]` | Snippets deployed into `~/.zsh/`, sourced by `zshrc` in filename order. A `# cs:requires-capability: <id>` line gates a snippet on a capability |
-| `files/p10k.zsh` + `font-meslo-lg-nerd-font` | The prompt runs in `powerline` mode, so the Nerd font cask is a baseline dependency. Installing it does not select it — set MesloLGS NF as the terminal profile font once |
-| `files/p10k.zsh` | Powerlevel10k prompt config |
-| `templates/vscode/settings.json.j2` | VS Code user settings (resolved by the `vscode` role) |
+| `presets.yml` | Named starting points (`full`, `minimal`) offered before the per-item prompts |
+| `files/p10k.zsh` | Powerlevel10k prompt config. The prompt runs in `powerline` mode, so the `font-meslo-lg-nerd-font` cask is a baseline dependency — set MesloLGS NF as the terminal profile font once |
+| `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
 | `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
-data. A capability declares `config: [{ src, dest, kind }]` and the generic
+data. A capability declares `config: [{ src, dest }]` and the generic
 `layer_configs` role deploys it, so adding one needs no orchestrator change.
 
 ### files/ vs templates/
@@ -36,7 +36,8 @@ Shell snippets are the one exception to the path: they stay in `files/shell/`
 and take a `.zsh.j2` suffix, because they are globbed rather than looked up.
 
 Values shared across templates live at the bottom of `vars.yml`
-(`ai_default_model`, `ai_chat_model`, `ai_gitlens_model`). Anything derivable
+(`ai_default_model`, `ai_chat_model`, `ai_gitlens_model`, `terminal_font_family`).
+Anything derivable
 from an existing list is derived in the template instead — e.g.
 `files/shell/20-aliases.zsh.j2` reads the Python version out of
 `homebrew_baseline_formulae` rather than restating it.

@@ -5,9 +5,9 @@
 #   - The python virtualenv leads on the left as a classic `(venv)`, shown only
 #     when a virtual environment is active.
 #
-# This file is managed by Ansible (roles/shell/files/p10k.zsh) and copied to
-# ~/.p10k.zsh — edit it here, not in place. Local prompt changes are
-# overwritten on the next apply.
+# Supplied by this layer as the `p10k.zsh` key and deployed to ~/.p10k.zsh —
+# edit it here, not in place. Local prompt changes are overwritten on the next
+# apply.
 #
 # Tip: Looking for a nice color? Here's a one-liner to print colormap.
 #

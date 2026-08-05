@@ -1,28 +1,13 @@
 ---
-# Capability catalog (public layer). Each entry is a selectable capability whose
-# `id` is the selection token. Merged (union by id) with other layers' catalogs
-# into the bootstrap menu and the engine's capability registry.
+# Capabilities offered by the public layer. Each entry is a selectable
+# capability whose `id` is the selection token; entries merge union-by-id across
+# layers into the bootstrap menu and the engine's capability registry.
 #
-# Schema:
-#   - id:       Stable capability token (used to remember prior answers).
-#               Never rename; treat like a primary key.
-#   - desc:     Human-readable label shown in the prompt.
-#   - type:     formula | cask | vscode | feature   (feature = no package)
-#   - packages: Space-separated brew formulae / casks / extension IDs installed
-#               when selected (omit for `feature`). Tap-qualified formula names
-#               (e.g. user/tap/formula) are supported — Homebrew taps on install.
-#   - requires: (optional) another capability id; only prompt when that one is
-#               selected earlier in the run or already present
-#                      this run OR `code` is already on PATH.
-#   - config:   (optional) files/templates deployed when the capability is active
-#               (highest-priority layer supplies the file):
-#                 - { src: <layer file key>, dest: <path>, kind: file|template,
-#                     mode: <octal string, default "0644"> }
-#   - adopt_if_present: (optional) a path; when it exists the capability is
-#               treated as active even if not selected (adopt an existing install).
-#   - reminders: (optional) list of post-setup message strings shown when active.
+# The schema is defined once, in the engine:
+#   computer-setup/examples/example-layer/capabilities.yml
+# Do not restate it here — that is how the two copies drifted apart before.
 #
-# Adding a new item: append below with a unique id. That's it.
+# Adding an item: append below with a unique id. That is the whole change.
 
 capabilities:
   # ─── Formulae ─────────────────────────────────────────────────────────────
@@ -30,7 +15,7 @@ capabilities:
     desc: "Node Version Manager (nvm)"
     type: formula
     packages: nvm
-    adopt_if_present: /opt/homebrew/opt/nvm/nvm.sh
+    adopt_if_present: "{{ homebrew_prefix }}/opt/nvm/nvm.sh"
   - id: uv
     desc: "Fast Python package manager (uv)"
     type: formula
@@ -43,12 +28,12 @@ capabilities:
     # tool on the machine that nothing installed — so a rebuilt Mac ran the gate
     # with the linter missing and still exited 0. Adopt it wherever it already
     # exists so an existing dev machine stays managed without re-selecting.
-    adopt_if_present: /opt/homebrew/bin/ansible-lint
+    adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
     type: formula
     packages: tfenv
-    adopt_if_present: /opt/homebrew/bin/tfenv
+    adopt_if_present: "{{ homebrew_prefix }}/bin/tfenv"
   - id: docker-cli
     desc: "Docker CLI + Buildx + Compose"
     type: formula
@@ -75,7 +60,7 @@ capabilities:
     desc: "OpenCode CLI"
     type: formula
     packages: anomalyco/tap/opencode
-    adopt_if_present: /opt/homebrew/bin/opencode
+    adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
     # The GitHub MCP token is injected at runtime via OC_GITHUB_PERSONAL_ACCESS_TOKEN
     # ({env:...} in the config) — no secret is stored.
     config:
@@ -97,7 +82,7 @@ capabilities:
     # formulae, and the VS Code settings template points todo-tree at it only
     # when this capability is active. Without adoption a machine with a working
     # rg would have had that setting silently removed.
-    adopt_if_present: /opt/homebrew/bin/rg
+    adopt_if_present: "{{ homebrew_prefix }}/bin/rg"
   - id: bun
     desc: "Bun (JS runtime & package manager)"
     type: formula
@@ -118,7 +103,7 @@ capabilities:
     desc: "Espressif IDE Manager (ESP-IDF toolchain)"
     type: formula
     packages: espressif/eim/eim
-    adopt_if_present: /opt/homebrew/bin/eim
+    adopt_if_present: "{{ homebrew_prefix }}/bin/eim"
   - id: tectonic
     desc: "Tectonic (self-contained LaTeX engine)"
     type: formula
@@ -127,7 +112,7 @@ capabilities:
     desc: "Gemini CLI"
     type: formula
     packages: gemini-cli
-    adopt_if_present: /opt/homebrew/bin/gemini
+    adopt_if_present: "{{ homebrew_prefix }}/bin/gemini"
   - id: crane
     desc: "crane (container registry / image tool)"
     type: formula
@@ -148,7 +133,8 @@ capabilities:
   # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
   # A collection of standalone tools with no package to install — each is
   # just a script deployed to ~/.local/bin (already on PATH via path.zsh).
-  # To add another: drop the file in files/scripts/ and add an entry here.
+  # To add another: drop the file in templates/scripts/ (as <name>.j2) or
+  # files/scripts/, and add an entry here with `src: scripts/<name>`.
   - id: check-merged-branches
     desc: "check_merged_branches (clean up local branches whose PRs already merged)"
     type: feature
@@ -217,7 +203,7 @@ capabilities:
     packages: gcloud-cli
     # Homebrew install location (NOT ~/google-cloud-sdk, which is the deprecated
     # manual install path). Present ⇒ adopt and keep the gcloud config managed.
-    adopt_if_present: /opt/homebrew/share/google-cloud-sdk
+    adopt_if_present: "{{ homebrew_prefix }}/share/google-cloud-sdk"
     reminders: ["Run: gcloud auth login (if using GCP)"]
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
@@ -244,19 +230,17 @@ capabilities:
   # Adding an extension: append its id to `packages` below. No new capability,
   # no new prompt.
   #
-  # Not in the pack, add if you want it:
-  #   innoverio.vscode-dbt-power-user   (dbt Power User — was a catalog option
-  #                                      but had never been selected)
+  # Considered and left out (add to `packages` if you want it):
+  #   innoverio.vscode-dbt-power-user   (dbt Power User)
   #
   # Machine-specific groups: a higher-priority layer adds its own capability
   # with a DIFFERENT id (e.g. `vscode-extensions-work` in the work layer). The
   # engine concatenates the packages of every selected `type: extension`
-  # capability sharing a `manager:`,
-  # so groups compose. Do NOT reuse the id below in another layer — capabilities
-  # merge by id and the higher-priority one would replace this list wholesale
-  # rather than extend it.
+  # capability sharing a `manager:`, so groups compose. Do NOT reuse the id
+  # below in another layer — capabilities merge by id, and the higher-priority
+  # one would replace this list wholesale rather than extend it.
   - id: vscode-extensions
-    desc: "VS Code: extension pack (33 extensions — all or nothing)"
+    desc: "VS Code: extension pack (all or nothing)"
     type: extension
     manager: vscode
     requires: vscode

@@ -1,0 +1,11 @@
+# Managed by computer-setup (layer: public) — do not edit manually
+# cs:requires-capability: gcloud
+# Google Cloud SDK (installed via Homebrew cask). Self-guards on presence.
+{% set gcloud_dir = homebrew_prefix ~ '/share/google-cloud-sdk' %}
+if [ -d '{{ gcloud_dir }}/bin' ]; then
+    [[ ":$PATH:" != *":{{ gcloud_dir }}/bin:"* ]] && \
+        export PATH="{{ gcloud_dir }}/bin:$PATH"
+fi
+if [ -f '{{ gcloud_dir }}/completion.zsh.inc' ]; then
+    source '{{ gcloud_dir }}/completion.zsh.inc'
+fi
