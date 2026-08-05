@@ -1,6 +1,6 @@
 ---
 # Named starting points for bootstrap. A preset is a PURE PREFILL: it supplies
-# the defaults the prompts start from and is never recorded in ~/.mac-prefs.yml.
+# the defaults the prompts start from and is never recorded in ~/.config/computer-setup/prefs.yml.
 # A machine set up from a preset is indistinguishable from one answered by hand,
 # so these can be edited freely without reconfiguring machines that used them.
 #
@@ -29,6 +29,7 @@ presets:
       - python-311
       # Development
       - ansible-lint
+      - shellcheck
       - docker-cli
       - colima
       - fswatch

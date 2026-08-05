@@ -29,6 +29,14 @@ capabilities:
     # with the linter missing and still exited 0. Adopt it wherever it already
     # exists so an existing dev machine stays managed without re-selecting.
     adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
+  - id: shellcheck
+    desc: "shellcheck (required to develop computer-setup itself)"
+    type: formula
+    packages: shellcheck
+    # Same reasoning as ansible-lint above: `scripts/check.sh` runs it as a hard
+    # gate, so a rebuilt Mac without it fails the suite rather than silently
+    # skipping ~1,900 lines of bash.
+    adopt_if_present: "{{ homebrew_prefix }}/bin/shellcheck"
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
     type: formula
