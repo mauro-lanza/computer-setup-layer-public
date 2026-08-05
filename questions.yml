@@ -95,6 +95,13 @@ questions:
     desc: "Where repositories are cloned"
     default: "{{ home_dir }}/Projects"
     set_var: repositories_base_dir
+    # NOT anchored to `^/` even though this must end up absolute: the default
+    # above is still the literal string "{{ home_dir }}/Projects" at prompt
+    # time (bootstrap does not render Jinja), and Ansible expands it on apply.
+    # An absolute-path anchor would therefore reject this file's own default.
+    # This catches the real failure modes instead — empty, or containing a
+    # space that would break the shell CLI that renders the answer.
+    validate: "^[^ ]+$"
 
   # The two scheduled LaunchAgents (09:00 upgrade, 10:00 drift check) were not
   # optional and their hours were reserved. An unattended daily ansible-pull is
@@ -111,9 +118,14 @@ questions:
     desc: "Hour of the daily unattended upgrade (0-23)"
     default: "9"
     set_var: drift_correction_upgrade_schedule_hour
+    # This value is written verbatim into a LaunchAgent plist, where a
+    # non-integer silently produces an agent that never fires. Alternation and
+    # plain classes only, so bash ERE and Python `re` agree.
+    validate: "^([0-9]|1[0-9]|2[0-3])$"
 
   - id: drift-check-hour
     type: text
     desc: "Hour of the daily drift check (0-23)"
     default: "10"
     set_var: drift_correction_schedule_hour
+    validate: "^([0-9]|1[0-9]|2[0-3])$"

@@ -1,6 +1,11 @@
 # Managed by computer-setup (layer: public) — do not edit manually
 # cs:requires-capability: docker-cli
-# Only deployed when the `docker-cli` capability is active. Without the
+#
+# DO NOT rename this file to .zsh.j2. It contains Go template syntax
+# (`{{.Server.Version}}`) for `docker --format`, which Jinja would try to parse
+# as its own expression and fail on. It stays a verbatim `files/` snippet for
+# that reason; anything needing `homebrew_prefix` belongs in a different file.
+## Only deployed when the `docker-cli` capability is active. Without the
 # directive these functions were deployed to every machine, including ones that
 # selected neither docker-cli nor colima — the `command -v docker` guard below
 # hid that, but the snippet was still installed and sourced on every shell.
