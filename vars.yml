@@ -115,14 +115,19 @@ macos_defaults:
     type: string
     value: "file://{{ home_dir }}/"
     notify: Restart Dock and Finder
+  # Tap to click. `int`, NOT `bool`: macOS itself stores this as an integer, and
+  # osx_defaults refuses to change an existing key's type — declaring bool failed
+  # on a fresh Mac with "Type mismatch. Type in defaults: int". A machine this
+  # playbook has already run on reports `boolean`, but that is the type the
+  # playbook wrote, not the one macOS uses natively. Trust a fresh machine.
   - domain: com.apple.AppleMultitouchTrackpad         # Trackpad: tap to click
     key: Clicking
-    type: bool
-    value: true
+    type: int
+    value: 1
   - domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
     key: Clicking
-    type: bool
-    value: true
+    type: int
+    value: 1
 
 # Defaults applied only when the app is actually installed. Pure layer data, so
 # swapping Rectangle for Raycast/Amethyst/AeroSpace is a change here rather than
