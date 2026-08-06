@@ -38,6 +38,16 @@ default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
   | sed 's@^refs/remotes/origin/@@' || true)
 {% endraw %}default_branch=${default_branch:-{{ git_default_branch }}}{% raw %}
 
+# Branches checked out in ANY worktree (including this one) can't be deleted —
+# git refuses with "used by worktree at ...". Collect them so they're skipped
+# during detection rather than blowing up the delete.
+worktree_branches=()
+while IFS= read -r _line; do
+  case "$_line" in
+    branch\ refs/heads/*) worktree_branches+=("${_line#branch refs/heads/}") ;;
+  esac
+done < <(git worktree list --porcelain 2>/dev/null || true)
+
 # Collect local branches once. (`mapfile` would be the obvious tool; see header.)
 branches=()
 while IFS= read -r _branch; do
@@ -55,24 +65,48 @@ echo ""
 merged_branches=()
 
 for branch in ${branches[@]+"${branches[@]}"}; do
-  # Skip the default branch and the branch currently checked out.
+  # Skip the default branch and anything checked out in a worktree.
   if [[ "$branch" == "$default_branch" || "$branch" == "$current_branch" ]]; then
     continue
   fi
+  in_worktree=0
+  for _wt in ${worktree_branches[@]+"${worktree_branches[@]}"}; do
+    [[ "$branch" == "$_wt" ]] && in_worktree=1 && break
+  done
+  [[ $in_worktree -eq 1 ]] && continue
 
-  # Look for merged PRs with this branch as head.
+  # Look for merged PRs with this branch as head. GitHub matches these by branch
+  # NAME, and it remembers the name forever — so a branch that was merged,
+  # deleted, and later recreated for a follow-up still matches its old PR. Each
+  # row therefore carries the PR's head commit, and we only treat the branch as
+  # merged when the local tip is exactly that commit. Otherwise the name has been
+  # reused (or new work was added on top) and deleting would destroy commits.
   if ! pr_info=$(gh pr list --head "$branch" --state merged \
-    --json number,title,mergedAt \
-    --jq '.[] | "#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
+    --json number,title,mergedAt,headRefOid \
+    --jq '.[] | "\(.headRefOid)\t#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
     echo "  ⚠  $branch — failed to query PR status, skipping"
     continue
   fi
 
-  if [[ -n "$pr_info" ]]; then
+  [[ -z "$pr_info" ]] && continue
+
+  local_tip=$(git rev-parse --verify --quiet "refs/heads/$branch") || continue
+
+  matched_pr=""
+  while IFS= read -r line; do
+    pr_oid=${line%%$'\t'*}
+    [[ "$pr_oid" == "$local_tip" ]] && matched_pr=${line#*$'\t'} && break
+  done <<< "$pr_info"
+
+  if [[ -n "$matched_pr" ]]; then
     merged_branches+=("$branch")
     echo "  🗑  $branch"
+    echo "      └─ $matched_pr"
+  else
+    # Name matches a merged PR but the commits don't — leave it alone.
+    echo "  ↻  $branch — matches a merged PR by name, but the local tip differs"
     while IFS= read -r line; do
-      echo "      └─ $line"
+      echo "      └─ ${line#*$'\t'} (kept, not deleted)"
     done <<< "$pr_info"
   fi
 done
@@ -84,8 +118,17 @@ else
   echo "Found ${#merged_branches[@]} branch(es) with merged PRs."
   read -rp "Delete them all? [y/N] " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    git branch -D "${merged_branches[@]}"
-    merged_branches=()
+    # One at a time: a single failure (e.g. branch checked out elsewhere) must
+    # not abort the run under `set -e`. Survivors stay in merged_branches so the
+    # unpushed report below still skips them — they are merged either way.
+    failed=()
+    for branch in ${merged_branches[@]+"${merged_branches[@]}"}; do
+      if ! git branch -D "$branch" 2>/dev/null; then
+        failed+=("$branch")
+        echo "  ⚠  $branch — could not delete"
+      fi
+    done
+    merged_branches=(${failed[@]+"${failed[@]}"})
   else
     echo "Skipped. You can delete them manually with:"
     echo "  git branch -D ${merged_branches[*]}"
