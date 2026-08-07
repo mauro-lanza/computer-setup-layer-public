@@ -128,6 +128,116 @@ macos_defaults:
     key: Clicking
     type: int
     value: 1
+  # Dragging (move a window by dragging after a tap). Same int-not-bool trap as
+  # Clicking above: verified with `defaults read-type` on a fresh machine, which
+  # reports integer. The old machine reported boolean — but that was this
+  # playbook's own earlier write, not macOS's native type.
+  - domain: com.apple.AppleMultitouchTrackpad         # Trackpad: tap-drag
+    key: Dragging
+    type: int
+    value: 1
+  - domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: Dragging
+    type: int
+    value: 1
+
+  # ─── Keyboard & text ───
+  # Double-space at the end of a sentence inserting a period. Fights with code
+  # and terminal input, so it stays off.
+  - domain: NSGlobalDomain
+    key: NSAutomaticPeriodSubstitutionEnabled
+    type: bool
+    value: false
+
+  # ─── Mouse ───
+  # Magic Mouse: enable the right-hand click region. Default is OneButton, which
+  # leaves the mouse with no context-menu click at all.
+  - domain: com.apple.driver.AppleBluetoothMultitouch.mouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
+
+  # ─── Window management ───
+  # macOS built-in tiling is disabled wholesale: Rectangle owns window layout,
+  # and leaving both enabled means edge-drags fire two competing tilers.
+  - domain: com.apple.WindowManager                   # tile on drag to screen edge
+    key: EnableTilingByEdgeDrag
+    type: bool
+    value: false
+  - domain: com.apple.WindowManager                   # hold Option to tile
+    key: EnableTilingOptionAccelerator
+    type: bool
+    value: false
+  - domain: com.apple.WindowManager                   # tile on drag to top edge
+    key: EnableTopTilingByEdgeDrag
+    type: bool
+    value: false
+
+  # ─── Hot corners ───
+  # Corner actions and their modifier keys are set in pairs. The modifier must be
+  # declared explicitly: leaving it unset makes the corner fire only while a
+  # modifier is held, which reads as "the setting silently did nothing".
+  # Action codes: 1 = disabled, 2 = Mission Control, 14 = Quick Note.
+  - domain: com.apple.dock                            # top-left: Mission Control
+    key: wvous-tl-corner
+    type: int
+    value: 2
+    notify: Restart Dock and Finder
+  - domain: com.apple.dock
+    key: wvous-tl-modifier
+    type: int
+    value: 0
+    notify: Restart Dock and Finder
+  # Bottom-right ships as Quick Note (14) and triggers on any stray cursor
+  # overshoot toward the scrollbar. Explicitly disabled.
+  - domain: com.apple.dock                            # bottom-right: disabled
+    key: wvous-br-corner
+    type: int
+    value: 1
+    notify: Restart Dock and Finder
+  - domain: com.apple.dock
+    key: wvous-br-modifier
+    type: int
+    value: 0
+    notify: Restart Dock and Finder
+
+  # ─── Dock ───
+  - domain: com.apple.dock          # don't enter Mission Control on top-edge drag
+    key: enterMissionControlByTopWindowDrag
+    type: bool
+    value: false
+    notify: Restart Dock and Finder
+
+  # ─── Finder ───
+  - domain: com.apple.finder        # default to icon view in new windows
+    key: FXPreferredViewStyle
+    type: string
+    value: icnv
+    notify: Restart Dock and Finder
+  - domain: com.apple.finder        # folders sort above loose files
+    key: _FXSortFoldersFirst
+    type: bool
+    value: true
+    notify: Restart Dock and Finder
+
+  # ─── Menu bar ───
+  - domain: com.apple.menuextra.clock
+    key: ShowSeconds
+    type: bool
+    value: true
+  - domain: com.apple.menuextra.clock
+    key: IsAnalog
+    type: bool
+    value: false
+  # Battery percentage is a ByHost preference — it lives in
+  # ~/Library/Preferences/ByHost and a plain `defaults read` cannot see it.
+  # Without `host: currentHost` this silently writes to the wrong plist and the
+  # menu bar never changes.
+  - domain: com.apple.controlcenter
+    key: BatteryShowPercentage
+    type: bool
+    value: false
+    host: currentHost
 
 # Defaults applied only when the app is actually installed. Pure layer data, so
 # swapping Rectangle for Raycast/Amethyst/AeroSpace is a change here rather than
