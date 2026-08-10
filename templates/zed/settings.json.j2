@@ -7,18 +7,23 @@
 // custom settings, run `zed: open default settings` from the
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
-  "agent_servers": {
-    "opencode": {
-      "default_config_options": {
-        "effort": "high",
-        "model": "{{ ai_default_model }}"
-      },
-      "type": "registry"
-    },
-    "github-copilot-cli": {
-      "type": "registry"
-    }
+  // UI & Theme
+  "theme": {
+    "mode": "system",
+    "light": "One Light",
+    "dark": "One Dark"
   },
+  "icon_theme": "Material Icon Theme",
+  "ui_font_size": 16,
+  "buffer_font_size": 16,
+  "base_keymap": "VSCode",
+  "title_bar": {
+    "show_onboarding_banner": false,
+    "show_user_picture": false,
+    "show_sign_in": false
+  },
+
+  // Panels & Layout
   "project_panel": {
     "dock": "left"
   },
@@ -31,27 +36,33 @@
   "git_panel": {
     "dock": "left"
   },
-  "edit_predictions": {
-    "provider": "copilot"
-  },
-  "terminal": {
-    "max_scroll_history_lines": 5000,
-    "font_family": "{{ terminal_font_family }}"
-  },
-  "base_keymap": "VSCode",
   "minimap": {
     "show": "never"
   },
+
+  // Editor
+  "linked_edits": true,
+  "colorize_brackets": true,
+  "show_whitespaces": "all",
+  "ensure_final_newline_on_save": true,
+
+  // Files
   "file_types": {
     "jinja-sql": [
       "*.sql"
     ]
   },
-  "colorize_brackets": true,
-  "linked_edits": true,
-  "show_whitespaces": "all",
-  "ensure_final_newline_on_save": true,
-  "icon_theme": "Catppuccin Macchiato",
+
+  // Terminal
+  "terminal": {
+    "max_scroll_history_lines": 10000,
+    "font_family": "{{ terminal_font_family }}"
+  },
+
+  // AI & Agents
+  "edit_predictions": {
+    "provider": "copilot"
+  },
   "agent": {
     "dock": "right",
     "enable_feedback": false,
@@ -60,15 +71,22 @@
       "model": "{{ ai_chat_model }}"
     }
   },
+  "agent_servers": {
+    "opencode": {
+      "type": "registry",
+      "default_config_options": {
+        "effort": "high",
+        "model": "{{ ai_default_model }}"
+      }
+    },
+    "github-copilot-cli": {
+      "type": "registry"
+    }
+  },
+
+  // Telemetry
   "telemetry": {
     "metrics": false,
     "diagnostics": false
-  },
-  "ui_font_size": 16,
-  "buffer_font_size": 16,
-  "theme": {
-    "mode": "system",
-    "light": "One Light",
-    "dark": "One Dark"
   }
 }
