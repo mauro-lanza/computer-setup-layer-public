@@ -33,6 +33,15 @@ if ! gh auth status &>/dev/null; then
   exit 1
 fi
 
+# Fetch first so remote-tracking refs are current and, more importantly, so the
+# commit objects behind any merged PR's headRefOid are actually present locally
+# — the ancestor check below needs them to detect branches merged via GitHub's
+# UI "Update branch" button. Non-fatal: an offline run should still work off
+# whatever's already in the local object database, just less reliably.
+if ! git fetch --prune 2>/dev/null; then
+  echo "Warning: git fetch failed, proceeding with local data only." >&2
+fi
+
 current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
 default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
   | sed 's@^refs/remotes/origin/@@' || true)
@@ -78,9 +87,15 @@ for branch in ${branches[@]+"${branches[@]}"}; do
   # Look for merged PRs with this branch as head. GitHub matches these by branch
   # NAME, and it remembers the name forever — so a branch that was merged,
   # deleted, and later recreated for a follow-up still matches its old PR. Each
-  # row therefore carries the PR's head commit, and we only treat the branch as
-  # merged when the local tip is exactly that commit. Otherwise the name has been
-  # reused (or new work was added on top) and deleting would destroy commits.
+  # row therefore carries the PR's head commit, and we treat the branch as
+  # merged when the local tip is that exact commit OR is an ancestor of it.
+  # The ancestor case covers PRs updated via GitHub's UI "Update branch" button
+  # (merging the base branch in before approval): that adds merge commits
+  # directly to the remote PR branch which never get pulled down locally, so
+  # the local tip legitimately lags behind headRefOid while still being fully
+  # contained in that PR's history. A genuinely reused name won't satisfy
+  # either check, since an unrelated PR's commit won't descend from this
+  # branch's old tip.
   if ! pr_info=$(gh pr list --head "$branch" --state merged \
     --json number,title,mergedAt,headRefOid \
     --jq '.[] | "\(.headRefOid)\t#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
@@ -95,7 +110,15 @@ for branch in ${branches[@]+"${branches[@]}"}; do
   matched_pr=""
   while IFS= read -r line; do
     pr_oid=${line%%$'\t'*}
-    [[ "$pr_oid" == "$local_tip" ]] && matched_pr=${line#*$'\t'} && break
+    if [[ "$pr_oid" == "$local_tip" ]]; then
+      matched_pr=${line#*$'\t'}
+      break
+    fi
+    if git cat-file -e "${pr_oid}^{commit}" 2>/dev/null \
+      && git merge-base --is-ancestor "$local_tip" "$pr_oid" 2>/dev/null; then
+      matched_pr=${line#*$'\t'}
+      break
+    fi
   done <<< "$pr_info"
 
   if [[ -n "$matched_pr" ]]; then
