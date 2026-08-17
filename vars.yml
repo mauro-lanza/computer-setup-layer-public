@@ -282,7 +282,7 @@ runtimes_tfenv_terraform_version: "1.12.2"
 
 # Provider-prefixed model id, as opencode and Zed's agent_servers expect.
 # Read by templates/opencode.json.j2 and templates/zed/settings.json.j2.
-ai_default_model: "github-copilot/claude-opus-5"
+ai_default_model: "github-copilot/claude-sonnet-5"
 
 # Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
 ai_chat_model: "claude-sonnet-5"

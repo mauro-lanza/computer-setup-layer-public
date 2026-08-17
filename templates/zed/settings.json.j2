@@ -8,6 +8,10 @@
 // command palette (cmd-shift-p / ctrl-shift-p)
 {
   // UI & Theme
+  "diff_view_style": "unified",
+  "git": {
+    "path_style": "file_name_first"
+  },
   "theme": {
     "mode": "system",
     "light": "One Light",
@@ -34,6 +38,8 @@
     "dock": "left"
   },
   "git_panel": {
+    "tree_view": false,
+    "group_by": "staging",
     "dock": "left"
   },
   "minimap": {
@@ -68,6 +74,7 @@
     "dock": "right",
     "enable_feedback": false,
     "default_model": {
+      "enable_thinking": true,
       "provider": "copilot_chat",
       "model": "{{ ai_chat_model }}"
     }
@@ -79,9 +86,6 @@
         "effort": "high",
         "model": "{{ ai_default_model }}"
       }
-    },
-    "github-copilot-cli": {
-      "type": "registry"
     }
   },
 
