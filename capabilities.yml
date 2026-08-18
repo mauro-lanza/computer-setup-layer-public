@@ -71,11 +71,13 @@ capabilities:
     # Third-party tap: the package cannot be resolved without it.
     tap: anomalyco/tap
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
-    # The GitHub MCP token is injected at runtime via OC_GITHUB_PERSONAL_ACCESS_TOKEN
-    # ({env:...} in the config) — no secret is stored.
+    # `instructions` in opencode.json references code-style.md by a path
+    # relative to the config file, so the two must land in the same directory.
     config:
       - src: opencode.json
         dest: "{{ home_dir }}/.config/opencode/opencode.json"
+      - src: opencode/code-style.md
+        dest: "{{ home_dir }}/.config/opencode/code-style.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     type: formula
