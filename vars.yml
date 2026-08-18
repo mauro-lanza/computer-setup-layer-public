@@ -298,3 +298,26 @@ terminal_font_family: "MesloLGS Nerd Font Mono"
 
 # Model id in GitLens' "<vendor>:<model>" form.
 ai_gitlens_model: "copilot:gpt-4.1"
+
+# ─── Scheduled jobs (scheduled_agents role) ──────────────────────────────────
+# Keeps local branches tidy across every checkout without being asked. Gated on
+# `requires_capability`, so removing the check-merged-branches capability
+# removes the agent with it rather than leaving a plist pointing at a script
+# that is no longer deployed.
+#
+# 08:30 is deliberately ahead of the 09:00 upgrade and 10:00 drift agents: it
+# touches only local branches and finishes fast, so it should not queue behind
+# a Homebrew upgrade. --auto-delete is required because a LaunchAgent has no
+# terminal, and without it the script reports and deletes nothing. --quiet drops
+# the repos with nothing to say, which over ~70 checkouts is the difference
+# between a 700-line log and a 100-line one.
+scheduled_agents:
+  - label: com.computer-setup.branch-cleanup
+    program: "{{ home_dir }}/.local/bin/check_merged_branches"
+    args:
+      - --all-repos
+      - --auto-delete
+      - --quiet
+    hour: 8
+    minute: 30
+    requires_capability: check-merged-branches

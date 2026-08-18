@@ -1,12 +1,16 @@
 {#
   Shell + Jinja hazard: this script uses bash array-length syntax `${#name[@]}`,
   and Jinja reads `{#` as a comment opener. The body is therefore wrapped in
-  {% raw %} blocks, and only the one templated line below sits outside them.
+  {% raw %} blocks, and only the templated config block below sits outside them.
   Keep it that way when editing.
 #}
 {% raw %}#!/bin/bash
 # Checks which local branches have associated PRs that were already merged,
-# offers to delete them, then reports branches with unpushed commits.
+# deletes them, then reports branches with unpushed commits.
+#
+# Operates on the current repository by default, or on every GitHub checkout
+# under a base directory with --all-repos, which is how the scheduled
+# LaunchAgent invokes it.
 #
 # TARGETS BASH 3.2. macOS ships bash 3.2 as /bin/bash and always will (the
 # license changed at 4.0), `bash` is not a managed formula, and this script is
@@ -19,180 +23,375 @@
 #     `${arr[@]+"${arr[@]}"}` guard, which expands to nothing when unset/empty.
 
 set -euo pipefail
+{% endraw %}
+# Templated defaults. The env vars exist so the scheduled agent — and anyone
+# debugging it — can retarget the script without re-running Ansible.
+DEFAULT_BRANCH_FALLBACK="${CHECK_MERGED_BRANCHES_DEFAULT_BRANCH:-{{ git_default_branch }}}"
+BASE_DIR="${CHECK_MERGED_BRANCHES_BASE_DIR:-{{ repositories_base_dir }}}"
+{% raw %}
+AUTO_DELETE=0
+ALL_REPOS=0
+QUIET=0
 
-# Must be run inside a git repository.
-if ! git rev-parse --is-inside-work-tree &>/dev/null; then
-  echo "Error: not inside a git repository." >&2
-  exit 1
-fi
+usage() {
+  cat <<'USAGE'
+Usage: check_merged_branches [options]
 
-# GitHub CLI must be authenticated to query PR status.
+  --all-repos       Process every GitHub checkout under the base directory
+                    instead of just the current repository.
+  --base-dir DIR    Base directory to scan with --all-repos.
+  --auto-delete     Delete merged branches without prompting. Required for
+                    unattended runs, which never prompt.
+  --quiet           With --all-repos, print only repositories that have
+                    something to report. Implies no prompting, since output is
+                    buffered until each repository is done.
+  -h, --help        Show this help.
+
+With no options the script prompts before deleting. With no terminal and no
+--auto-delete it reports only and deletes nothing.
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --all-repos) ALL_REPOS=1 ;;
+    --auto-delete) AUTO_DELETE=1 ;;
+    --quiet) QUIET=1 ;;
+    --base-dir)
+      shift
+      [[ $# -gt 0 ]] || { echo "Error: --base-dir needs a value." >&2; exit 2; }
+      BASE_DIR="$1"
+      ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Error: unknown option '$1'." >&2; usage >&2; exit 2 ;;
+  esac
+  shift
+done
+
+# GitHub CLI must be authenticated to query PR status. Checked once, up front:
+# under the scheduled agent this is the single most likely reason for a silent
+# no-op, and failing here names the reason instead of reporting "no merged PRs"
+# for every repo in turn.
 if ! gh auth status &>/dev/null; then
   echo "Error: GitHub CLI is not authenticated." >&2
   echo "Run: gh auth login" >&2
   exit 1
 fi
 
-# Fetch first so remote-tracking refs are current and, more importantly, so the
-# commit objects behind any merged PR's headRefOid are actually present locally
-# — the ancestor check below needs them to detect branches merged via GitHub's
-# UI "Update branch" button. Non-fatal: an offline run should still work off
-# whatever's already in the local object database, just less reliably.
-if ! git fetch --prune 2>/dev/null; then
-  echo "Warning: git fetch failed, proceeding with local data only." >&2
+# Deleting branches is the one irreversible thing this script does, so it never
+# happens implicitly. Unattended runs must opt in with --auto-delete; without a
+# terminal AND without that flag we report and stop. The alternative — prompting
+# anyway — is worse than useless under launchd: `read` hits EOF immediately,
+# returns non-zero, and `set -e` kills the script mid-run, so the unpushed-commit
+# report below never prints and the agent records a failure.
+if [[ $AUTO_DELETE -eq 0 && ! -t 0 ]]; then
+  echo "Note: no terminal and no --auto-delete — reporting only, nothing will be deleted."
+  echo ""
 fi
 
-current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
-default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
-  | sed 's@^refs/remotes/origin/@@' || true)
-{% endraw %}default_branch=${default_branch:-{{ git_default_branch }}}{% raw %}
+# Reports which branches in the CURRENT directory have merged PRs, deletes them
+# if allowed to, then reports unpushed commits. Called in a subshell per repo so
+# the `cd` and the per-repo state cannot leak between repositories.
+process_repo() {
+  local current_branch default_branch local_tip matched_pr pr_info
+  local branch merged _wt _line _branch in_worktree skip do_delete confirm
+  local pr_oid pr_num pr_desc _pr_oid _pr_num
+  local upstream ahead commit_count unpushed_found
 
-# Branches checked out in ANY worktree (including this one) can't be deleted —
-# git refuses with "used by worktree at ...". Collect them so they're skipped
-# during detection rather than blowing up the delete.
-worktree_branches=()
-while IFS= read -r _line; do
-  case "$_line" in
-    branch\ refs/heads/*) worktree_branches+=("${_line#branch refs/heads/}") ;;
-  esac
-done < <(git worktree list --porcelain 2>/dev/null || true)
+  if ! git rev-parse --is-inside-work-tree &>/dev/null; then
+    echo "Error: not inside a git repository." >&2
+    return 1
+  fi
 
-# Collect local branches once. (`mapfile` would be the obvious tool; see header.)
-branches=()
-while IFS= read -r _branch; do
-  branches+=("$_branch")
-done < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+  # Fetch first so remote-tracking refs are current and deleted ones are pruned.
+  # This deliberately does NOT try to bring down the commits behind a merged PR's
+  # headRefOid — it can't. Those live on the PR's source branch, which is usually
+  # deleted on merge, and a squash-merge never puts them in the base branch's
+  # history either. The ancestor check below fetches them per PR instead.
+  # Non-fatal: an offline run should still work off whatever's already in the
+  # local object database, just less reliably.
+  if ! git fetch --prune 2>/dev/null; then
+    echo "Warning: git fetch failed, proceeding with local data only." >&2
+  fi
 
-if [[ ${#branches[@]} -eq 0 ]]; then
-  echo "No local branches found."
+  current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "")
+  default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null \
+    | sed 's@^refs/remotes/origin/@@' || true)
+  default_branch=${default_branch:-$DEFAULT_BRANCH_FALLBACK}
+
+  # Branches checked out in ANY worktree (including this one) can't be deleted —
+  # git refuses with "used by worktree at ...". Collect them so they're skipped
+  # during detection rather than blowing up the delete.
+  local worktree_branches=()
+  while IFS= read -r _line; do
+    case "$_line" in
+      branch\ refs/heads/*) worktree_branches+=("${_line#branch refs/heads/}") ;;
+    esac
+  done < <(git worktree list --porcelain 2>/dev/null || true)
+
+  # Collect local branches once. (`mapfile` would be the obvious tool; see header.)
+  local branches=()
+  while IFS= read -r _branch; do
+    branches+=("$_branch")
+  done < <(git for-each-ref --format='%(refname:short)' refs/heads/)
+
+  if [[ ${#branches[@]} -eq 0 ]]; then
+    echo "No local branches found."
+    return 0
+  fi
+
+  echo "Checking local branches for merged PRs..."
+  echo ""
+
+  local merged_branches=()
+
+  for branch in ${branches[@]+"${branches[@]}"}; do
+    # Skip the default branch and anything checked out in a worktree.
+    if [[ "$branch" == "$default_branch" || "$branch" == "$current_branch" ]]; then
+      continue
+    fi
+    in_worktree=0
+    for _wt in ${worktree_branches[@]+"${worktree_branches[@]}"}; do
+      [[ "$branch" == "$_wt" ]] && in_worktree=1 && break
+    done
+    [[ $in_worktree -eq 1 ]] && continue
+
+    # Look for merged PRs with this branch as head. GitHub matches these by branch
+    # NAME, and it remembers the name forever — so a branch that was merged,
+    # deleted, and later recreated for a follow-up still matches its old PR. Each
+    # row therefore carries the PR's head commit, and we treat the branch as
+    # merged when the local tip is that exact commit OR is an ancestor of it.
+    # The ancestor case covers PRs updated via GitHub's UI "Update branch" button
+    # (merging the base branch in before approval): that adds merge commits
+    # directly to the remote PR branch which never get pulled down locally, so
+    # the local tip legitimately lags behind headRefOid while still being fully
+    # contained in that PR's history. A genuinely reused name won't satisfy
+    # either check, since an unrelated PR's commit won't descend from this
+    # branch's old tip.
+    #
+    # headRefOid is therefore usually absent from the local object database (see
+    # the fetch note above), so it's pulled from GitHub's refs/pull/N/head on
+    # demand, per PR, right before the ancestor check needs it.
+    if ! pr_info=$(gh pr list --head "$branch" --state merged \
+      --json number,title,mergedAt,headRefOid \
+      --jq '.[] | "\(.headRefOid)\t\(.number)\t#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
+      echo "  ⚠  $branch — failed to query PR status, skipping"
+      continue
+    fi
+
+    [[ -z "$pr_info" ]] && continue
+
+    local_tip=$(git rev-parse --verify --quiet "refs/heads/$branch") || continue
+
+    matched_pr=""
+    while IFS=$'\t' read -r pr_oid pr_num pr_desc; do
+      if [[ "$pr_oid" == "$local_tip" ]]; then
+        matched_pr="$pr_desc"
+        break
+      fi
+      if ! git cat-file -e "${pr_oid}^{commit}" 2>/dev/null; then
+        git fetch --quiet origin "refs/pull/${pr_num}/head" 2>/dev/null || true
+      fi
+      if git cat-file -e "${pr_oid}^{commit}" 2>/dev/null \
+        && git merge-base --is-ancestor "$local_tip" "$pr_oid" 2>/dev/null; then
+        matched_pr="$pr_desc"
+        break
+      fi
+    done <<< "$pr_info"
+
+    if [[ -n "$matched_pr" ]]; then
+      merged_branches+=("$branch")
+      echo "  🗑  $branch"
+      echo "      └─ $matched_pr"
+    else
+      # Name matches a merged PR but the commits don't — leave it alone.
+      echo "  ↻  $branch — matches a merged PR by name, but the local tip differs"
+      while IFS=$'\t' read -r _pr_oid _pr_num pr_desc; do
+        echo "      └─ $pr_desc (kept, not deleted)"
+      done <<< "$pr_info"
+    fi
+  done
+
+  echo ""
+  if [[ ${#merged_branches[@]} -eq 0 ]]; then
+    echo "No local branches with merged PRs found."
+  else
+    echo "Found ${#merged_branches[@]} branch(es) with merged PRs."
+
+    do_delete=0
+    if [[ $AUTO_DELETE -eq 1 ]]; then
+      do_delete=1
+    elif [[ -t 0 && $QUIET -eq 0 ]]; then
+      # `|| confirm=""` because a failing `read` (EOF) would otherwise trip
+      # `set -e` and abort the whole run.
+      read -rp "Delete them all? [y/N] " confirm || confirm=""
+      [[ "$confirm" =~ ^[Yy]$ ]] && do_delete=1
+    fi
+
+    if [[ $do_delete -eq 1 ]]; then
+      # One at a time: a single failure (e.g. branch checked out elsewhere) must
+      # not abort the run under `set -e`. Survivors stay in merged_branches so the
+      # unpushed report below still skips them — they are merged either way.
+      local failed=()
+      for branch in ${merged_branches[@]+"${merged_branches[@]}"}; do
+        if ! git branch -D "$branch" 2>/dev/null; then
+          failed+=("$branch")
+          echo "  ⚠  $branch — could not delete"
+        fi
+      done
+      merged_branches=(${failed[@]+"${failed[@]}"})
+    else
+      echo "Skipped. You can delete them manually with:"
+      echo "  git branch -D ${merged_branches[*]}"
+    fi
+  fi
+
+  # Report branches with commits that aren't on their remote.
+  echo ""
+  echo "Checking for branches with unpushed commits..."
+  echo ""
+
+  unpushed_found=0
+
+  for branch in ${branches[@]+"${branches[@]}"}; do
+    # Skip branches already flagged as merged (and possibly deleted).
+    skip=0
+    for merged in ${merged_branches[@]+"${merged_branches[@]}"}; do
+      [[ "$branch" == "$merged" ]] && skip=1 && break
+    done
+    [[ $skip -eq 1 ]] && continue
+
+    # Skip branches that no longer exist (deleted above).
+    git show-ref --quiet --verify "refs/heads/$branch" || continue
+
+    if upstream=$(git rev-parse --abbrev-ref "$branch@{upstream}" 2>/dev/null); then
+      ahead=$(git rev-list --count "$upstream".."$branch" 2>/dev/null || echo "0")
+      if [[ "$ahead" -gt 0 ]]; then
+        unpushed_found=1
+        echo "  ⚠  $branch — $ahead unpushed commit(s) vs $upstream"
+      fi
+    else
+      # No upstream tracking branch; compare against the default branch.
+      commit_count=$(git rev-list --count "$default_branch".."$branch" 2>/dev/null || echo "0")
+      if [[ "$commit_count" -gt 0 ]]; then
+        unpushed_found=1
+        echo "  ⚠  $branch — no upstream, $commit_count commit(s) ahead of $default_branch"
+      fi
+    fi
+  done
+
+  if [[ $unpushed_found -eq 0 ]]; then
+    echo "All branches are up to date with their remotes."
+  fi
+  return 0
+}
+
+if [[ $ALL_REPOS -eq 0 ]]; then
+  process_repo
+  exit $?
+fi
+
+if [[ ! -d "$BASE_DIR" ]]; then
+  echo "Error: base directory '$BASE_DIR' does not exist." >&2
+  exit 1
+fi
+
+# Discover checkouts the same way `computer-setup repos` does. Two deliberate
+# differences:
+#   * no `-type d`, because a linked worktree's `.git` is a FILE, and a worktree
+#     is a perfectly valid place to prune branches from;
+#   * vendored dependency trees are pruned by name. Without this, one
+#     node_modules with its own .git turns into a `gh` query per branch of a
+#     repo the user does not own.
+repos=()
+while IFS= read -r _git_path; do
+  repos+=("$(dirname "$_git_path")")
+done < <(find "$BASE_DIR" \
+  \( -name node_modules -o -name vendor -o -name .terraform \) -prune -o \
+  -name .git -print 2>/dev/null | sort)
+
+if [[ ${#repos[@]} -eq 0 ]]; then
+  echo "No git repositories found under $BASE_DIR."
   exit 0
 fi
 
-echo "Checking local branches for merged PRs..."
-echo ""
+processed=0
+skipped=0
+submodules=0
+reported_nothing=0
+failed_repos=()
 
-merged_branches=()
-
-for branch in ${branches[@]+"${branches[@]}"}; do
-  # Skip the default branch and anything checked out in a worktree.
-  if [[ "$branch" == "$default_branch" || "$branch" == "$current_branch" ]]; then
-    continue
-  fi
-  in_worktree=0
-  for _wt in ${worktree_branches[@]+"${worktree_branches[@]}"}; do
-    [[ "$branch" == "$_wt" ]] && in_worktree=1 && break
-  done
-  [[ $in_worktree -eq 1 ]] && continue
-
-  # Look for merged PRs with this branch as head. GitHub matches these by branch
-  # NAME, and it remembers the name forever — so a branch that was merged,
-  # deleted, and later recreated for a follow-up still matches its old PR. Each
-  # row therefore carries the PR's head commit, and we treat the branch as
-  # merged when the local tip is that exact commit OR is an ancestor of it.
-  # The ancestor case covers PRs updated via GitHub's UI "Update branch" button
-  # (merging the base branch in before approval): that adds merge commits
-  # directly to the remote PR branch which never get pulled down locally, so
-  # the local tip legitimately lags behind headRefOid while still being fully
-  # contained in that PR's history. A genuinely reused name won't satisfy
-  # either check, since an unrelated PR's commit won't descend from this
-  # branch's old tip.
-  if ! pr_info=$(gh pr list --head "$branch" --state merged \
-    --json number,title,mergedAt,headRefOid \
-    --jq '.[] | "\(.headRefOid)\t#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
-    echo "  ⚠  $branch — failed to query PR status, skipping"
+for repo in ${repos[@]+"${repos[@]}"}; do
+  # Submodules are pinned to a commit by their superproject, not developed in
+  # place. Their branches belong to the upstream project, so a "merged PR" there
+  # is somebody else's and deleting it is both meaningless and confusing. One
+  # superproject can easily carry 20+ of them, each otherwise costing a network
+  # fetch and a `gh` query per branch.
+  #
+  # `--show-superproject-working-tree` is the canonical test: it prints the
+  # parent's path for a genuine submodule and nothing otherwise. Checking `.git`
+  # is a file would be wrong — that is also true of a linked worktree, which is
+  # a legitimate place to prune branches from.
+  if [[ -n "$(git -C "$repo" rev-parse --show-superproject-working-tree 2>/dev/null)" ]]; then
+    submodules=$((submodules + 1))
     continue
   fi
 
-  [[ -z "$pr_info" ]] && continue
+  # `gh` only speaks to GitHub, so a checkout whose origin points elsewhere (or
+  # nowhere) can never match a PR. Skipping them silently keeps the log about
+  # repos the script can actually act on.
+  origin=$(git -C "$repo" remote get-url origin 2>/dev/null || echo "")
+  case "$origin" in
+    *github.com*) ;;
+    *) skipped=$((skipped + 1)); continue ;;
+  esac
 
-  local_tip=$(git rev-parse --verify --quiet "refs/heads/$branch") || continue
-
-  matched_pr=""
-  while IFS= read -r line; do
-    pr_oid=${line%%$'\t'*}
-    if [[ "$pr_oid" == "$local_tip" ]]; then
-      matched_pr=${line#*$'\t'}
-      break
+  # Subshell: `cd` stays local, and a `set -e` abort inside one repo is caught
+  # here rather than ending the run for every repo after it.
+  #
+  # Under --quiet the output is buffered so a repo with nothing to say can be
+  # dropped entirely. A daily run over ~70 checkouts is otherwise ~700 lines of
+  # log in which 95% of repos say "nothing to do" — which is exactly the shape
+  # of log nobody reads, and therefore the shape in which a real warning goes
+  # unnoticed. Buffering is also why --quiet cannot prompt: the prompt would be
+  # captured instead of shown.
+  repo_status=0
+  if [[ $QUIET -eq 1 ]]; then
+    repo_out=$( cd "$repo" && process_repo 2>&1 ) || repo_status=$?
+    # ⚠ warnings, 🗑 deletions and ↻ near-misses are the whole point of the run.
+    if [[ $repo_status -ne 0 ]] || printf '%s\n' "$repo_out" | grep -qE '⚠|🗑|↻|^Error|^Warning'; then
+      echo "═══ ${repo#"$BASE_DIR"/} ═══"
+      printf '%s\n' "$repo_out"
+      echo ""
+    else
+      reported_nothing=$((reported_nothing + 1))
     fi
-    if git cat-file -e "${pr_oid}^{commit}" 2>/dev/null \
-      && git merge-base --is-ancestor "$local_tip" "$pr_oid" 2>/dev/null; then
-      matched_pr=${line#*$'\t'}
-      break
-    fi
-  done <<< "$pr_info"
-
-  if [[ -n "$matched_pr" ]]; then
-    merged_branches+=("$branch")
-    echo "  🗑  $branch"
-    echo "      └─ $matched_pr"
   else
-    # Name matches a merged PR but the commits don't — leave it alone.
-    echo "  ↻  $branch — matches a merged PR by name, but the local tip differs"
-    while IFS= read -r line; do
-      echo "      └─ ${line#*$'\t'} (kept, not deleted)"
-    done <<< "$pr_info"
+    echo "═══ ${repo#"$BASE_DIR"/} ═══"
+    ( cd "$repo" && process_repo ) || repo_status=$?
+    echo ""
+  fi
+
+  if [[ $repo_status -eq 0 ]]; then
+    processed=$((processed + 1))
+  else
+    failed_repos+=("$repo")
+    echo "  ⚠  $repo — failed to process, continuing"
   fi
 done
 
-echo ""
-if [[ ${#merged_branches[@]} -eq 0 ]]; then
-  echo "No local branches with merged PRs found."
-else
-  echo "Found ${#merged_branches[@]} branch(es) with merged PRs."
-  read -rp "Delete them all? [y/N] " confirm
-  if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    # One at a time: a single failure (e.g. branch checked out elsewhere) must
-    # not abort the run under `set -e`. Survivors stay in merged_branches so the
-    # unpushed report below still skips them — they are merged either way.
-    failed=()
-    for branch in ${merged_branches[@]+"${merged_branches[@]}"}; do
-      if ! git branch -D "$branch" 2>/dev/null; then
-        failed+=("$branch")
-        echo "  ⚠  $branch — could not delete"
-      fi
-    done
-    merged_branches=(${failed[@]+"${failed[@]}"})
-  else
-    echo "Skipped. You can delete them manually with:"
-    echo "  git branch -D ${merged_branches[*]}"
-  fi
+echo "───────────────────────────────────────────────"
+echo "Scanned ${#repos[@]} checkout(s) under $BASE_DIR:"
+echo "  processed: $processed"
+echo "  skipped (no GitHub origin): $skipped"
+echo "  skipped (submodules): $submodules"
+if [[ $QUIET -eq 1 ]]; then
+  echo "  nothing to report: $reported_nothing"
 fi
-
-# Report branches with commits that aren't on their remote.
-echo ""
-echo "Checking for branches with unpushed commits..."
-echo ""
-
-unpushed_found=0
-
-for branch in ${branches[@]+"${branches[@]}"}; do
-  # Skip branches already flagged as merged (and possibly deleted).
-  skip=0
-  for merged in ${merged_branches[@]+"${merged_branches[@]}"}; do
-    [[ "$branch" == "$merged" ]] && skip=1 && break
+if [[ ${#failed_repos[@]} -gt 0 ]]; then
+  echo "  failed: ${#failed_repos[@]}"
+  for repo in ${failed_repos[@]+"${failed_repos[@]}"}; do
+    echo "    - $repo"
   done
-  [[ $skip -eq 1 ]] && continue
-
-  # Skip branches that no longer exist (deleted above).
-  git show-ref --quiet --verify "refs/heads/$branch" || continue
-
-  if upstream=$(git rev-parse --abbrev-ref "$branch@{upstream}" 2>/dev/null); then
-    ahead=$(git rev-list --count "$upstream".."$branch" 2>/dev/null || echo "0")
-    if [[ "$ahead" -gt 0 ]]; then
-      unpushed_found=1
-      echo "  ⚠  $branch — $ahead unpushed commit(s) vs $upstream"
-    fi
-  else
-    # No upstream tracking branch; compare against the default branch.
-    commit_count=$(git rev-list --count "$default_branch".."$branch" 2>/dev/null || echo "0")
-    if [[ "$commit_count" -gt 0 ]]; then
-      unpushed_found=1
-      echo "  ⚠  $branch — no upstream, $commit_count commit(s) ahead of $default_branch"
-    fi
-  fi
-done
-
-if [[ $unpushed_found -eq 0 ]]; then
-  echo "All branches are up to date with their remotes."
 fi
 {% endraw %}
