@@ -27,7 +27,12 @@ set -euo pipefail
 # Templated defaults. The env vars exist so the scheduled agent — and anyone
 # debugging it — can retarget the script without re-running Ansible.
 DEFAULT_BRANCH_FALLBACK="${CHECK_MERGED_BRANCHES_DEFAULT_BRANCH:-{{ git_default_branch }}}"
-BASE_DIR="${CHECK_MERGED_BRANCHES_BASE_DIR:-{{ repositories_base_dir }}}"
+# `| expanduser`: repositories_base_dir is answered by a human (the
+# repositories-dir question) and "~/Projects" is the natural answer. Ansible
+# expands `~` wherever a module consumes a path, so that answer is valid
+# everywhere else — but `~` does not expand inside a quoted shell assignment,
+# and the literal string would make every unattended run exit 1.
+BASE_DIR="${CHECK_MERGED_BRANCHES_BASE_DIR:-{{ repositories_base_dir | expanduser }}}"
 {% raw %}
 AUTO_DELETE=0
 ALL_REPOS=0
