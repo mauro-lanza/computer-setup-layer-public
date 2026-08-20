@@ -155,7 +155,7 @@ capabilities:
     config:
       - src: scripts/check_merged_branches
         dest: "{{ home_dir }}/.local/bin/check_merged_branches"
-        mode: "0755"
+        executable: true
 
   # ─── Casks ────────────────────────────────────────────────────────────────
   - id: 1password
