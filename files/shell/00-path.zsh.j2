@@ -8,10 +8,18 @@
 # below: ~/.local/bin, then sbin, then bin. That is deliberate — a binary the
 # user installed in ~/.local/bin shadows the Homebrew-managed one. Do not
 # "fix" the list order.
+#
+# Strips any existing occurrence before prepending, rather than skipping when
+# already present — see findings.md ("path_helper can defeat the PATH
+# snippet's own prepend logic") for why a plain "skip if present" guard fails.
 for _cs_p in {{ homebrew_prefix }}/bin {{ homebrew_prefix }}/sbin "$HOME/.local/bin"; do
-  [[ ":$PATH:" != *":$_cs_p:"* ]] && export PATH="$_cs_p:$PATH"
+  _cs_path=":$PATH:"
+  _cs_path="${_cs_path//:$_cs_p:/:}"
+  _cs_path="${_cs_path#:}"
+  _cs_path="${_cs_path%:}"
+  export PATH="$_cs_p:$_cs_path"
 done
-unset _cs_p
+unset _cs_p _cs_path
 
 # Homebrew: disable anonymous analytics collection
 export HOMEBREW_NO_ANALYTICS=1
