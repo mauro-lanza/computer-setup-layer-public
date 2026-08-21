@@ -3,5 +3,5 @@
 {% set _py = (homebrew_baseline_formulae | select('match', '^python@') | list) %}
 {% set _pyver = (_py | first | replace('python@', '')) if _py else '3' %}
 # Managed by computer-setup (layer: public) — do not edit manually
-alias activate='source ./venv/bin/activate'
-alias setvenv='python{{ _pyver }} -m venv venv'
+alias activate='source ./.venv/bin/activate'
+alias setvenv='python{{ _pyver }} -m venv .venv'
