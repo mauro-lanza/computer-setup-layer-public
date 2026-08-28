@@ -54,7 +54,12 @@ unset _cs_snippet
 # ─── Powerlevel10k theme ──────────────────────────────────────────────────────
 [[ -r "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme" ]] && \
   source "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme"
-[[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+# POWERLEVEL9K_CONFIG_FILE, not just a source line. p10k defaults to
+# `${ZDOTDIR:-~}/.p10k.zsh` and only looks elsewhere when this is set, so
+# without it `p10k configure` writes a fresh config to ~/.p10k.zsh — a file
+# nothing sources — and the prompt silently does not change.
+export POWERLEVEL9K_CONFIG_FILE=~/.zsh/configs/p10k.zsh
+[[ -f "$POWERLEVEL9K_CONFIG_FILE" ]] && source "$POWERLEVEL9K_CONFIG_FILE"
 
 # ─── Plugins (Homebrew) ───────────────────────────────────────────────────────
 # Order matters: autosuggestions first, syntax highlighting LAST.

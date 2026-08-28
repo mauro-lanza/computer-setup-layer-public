@@ -5,9 +5,14 @@
 #   - The python virtualenv leads on the left as a classic `(venv)`, shown only
 #     when a virtual environment is active.
 #
-# Supplied by this layer as the `p10k.zsh` key and deployed to ~/.p10k.zsh —
-# edit it here, not in place. Local prompt changes are overwritten on the next
-# apply.
+# Supplied by this layer as the `p10k.zsh` key and deployed to
+# ~/.zsh/configs/p10k.zsh — edit it HERE, not in place. Local prompt changes are
+# overwritten on the next apply.
+#
+# `p10k configure` writes to $POWERLEVEL9K_CONFIG_FILE, which the layer's zshrc
+# points at the deployed copy — so the wizard's output lands in a file that IS
+# sourced, but is still overwritten on the next apply. Copy what it produces
+# back into this file to keep it.
 #
 # Tip: Looking for a nice color? Here's a one-liner to print colormap.
 #
@@ -24,7 +29,9 @@
   emulate -L zsh -o extended_glob
 
   # Unset all configuration options. This allows you to apply configuration changes without
-  # restarting zsh. Edit ~/.p10k.zsh and type `source ~/.p10k.zsh`.
+  # restarting zsh. Upstream says to edit ~/.p10k.zsh; in this setup the file is
+  # deployed to ~/.zsh/configs/p10k.zsh and editing it is overwritten on the
+  # next apply — change files/p10k.zsh in the layer instead.
   unset -m '(POWERLEVEL9K_*|DEFAULT_USER)~POWERLEVEL9K_GITSTATUS_DIR'
 
   # Zsh >= 5.1 is required.
