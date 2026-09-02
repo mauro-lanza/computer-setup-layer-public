@@ -321,3 +321,17 @@ scheduled_agents:
     hour: 8
     minute: 30
     requires_capability: check-merged-branches
+
+# ─── Credentials a person has to obtain ──────────────────────────────────────
+# Replaces the reminder "Run: gcloud auth login (if using GCP)", which printed
+# on every run whether or not it had been done — including on machines that had
+# been signed in for months. This reports only while the credential is actually
+# missing.
+logins:
+  - id: gcloud
+    desc: "gcloud (Google Cloud SDK)"
+    requires_capability: gcloud
+    # No key: gcloud's credential store is SQLite, not JSON, and it holds only
+    # gcloud's own credentials — so the file existing IS the answer.
+    detect_file: "{{ home_dir }}/.config/gcloud/credentials.db"
+    remedy: "gcloud auth login"

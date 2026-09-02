@@ -162,6 +162,10 @@ capabilities:
     desc: "1Password"
     type: cask
     packages: 1password
+    # Stays a REMINDER rather than becoming a checked login: 1Password is a GUI
+    # app whose signed-in state has no on-disk marker readable from here (no
+    # ~/.config/op, no accessible container), so there is nothing to probe. An
+    # unconditional nag is the honest option when detection is impossible.
     reminders: ["Open 1Password and sign in"]
   - id: vscode
     desc: "Visual Studio Code"
@@ -218,7 +222,6 @@ capabilities:
     # Homebrew install location (NOT ~/google-cloud-sdk, which is the deprecated
     # manual install path). Present ⇒ adopt and keep the gcloud config managed.
     adopt_if_present: "{{ homebrew_prefix }}/share/google-cloud-sdk"
-    reminders: ["Run: gcloud auth login (if using GCP)"]
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
     type: cask
