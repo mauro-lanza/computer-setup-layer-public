@@ -77,10 +77,25 @@ done
 # under the scheduled agent this is the single most likely reason for a silent
 # no-op, and failing here names the reason instead of reporting "no merged PRs"
 # for every repo in turn.
+#
+# The exit code depends on WHO is asking, and the distinction is not cosmetic.
+# `gh` keeps its token in the login keychain, and a LaunchAgent that fires on a
+# machine which has just woken cannot always read it. That is a precondition
+# not being met, not a fault — the same judgement `computer-setup`'s scheduled
+# modes already make about an unreachable repo, where a closed laptop exits 0.
+#
+# Exiting 1 there leaves `launchctl list` showing a permanent failure for a job
+# that is working fine, which trains everyone to ignore the one column that says
+# whether unattended work is happening.
 if ! gh auth status &>/dev/null; then
-  echo "Error: GitHub CLI is not authenticated." >&2
-  echo "Run: gh auth login" >&2
-  exit 1
+  if [[ -t 2 ]]; then
+    echo "Error: GitHub CLI is not authenticated." >&2
+    echo "Run: gh auth login" >&2
+    exit 1
+  fi
+  # Unattended. Say it on stderr so the agent's log still explains the no-op.
+  echo "GitHub CLI not authenticated (keychain unavailable?) — skipping this run." >&2
+  exit 0
 fi
 
 # Deleting branches is the one irreversible thing this script does, so it never
