@@ -52,8 +52,21 @@ capabilities:
     desc: "Colima (lightweight Docker runtime)"
     type: formula
     packages: colima
+  # NOT in any preset, on purpose. This is the full database SERVER (251M), and
+  # it was never wanted as one — it was installed because building `mysqlclient`
+  # from source needs `mysql_config` and the client headers, which this formula
+  # happens to drag along.
+  #
+  # That reason has expired: the repo that pulled it in has `mysqlclient`
+  # commented out as unused, and the one project still speaking MySQL uses
+  # `pymysql`, which is pure Python and compiles nothing.
+  #
+  # If the build dependency ever comes back, `mariadb-connector-c` is the right
+  # formula — it is the client library alone. Note that a faster installer does
+  # not help here: uv resolves the same PyPI wheels pip does, so a package with
+  # no wheel for this platform is still built from source either way.
   - id: mariadb
-    desc: "MariaDB database"
+    desc: "MariaDB database server (only needed to BUILD mysqlclient; see note)"
     type: formula
     packages: mariadb
   - id: fswatch

@@ -15,7 +15,9 @@ presets:
   # i.e. the machine as currently run. Deliberately excluded, and reported by
   # `computer-setup layers lint` so the omission stays a choice rather than an
   # oversight: bitmap-fonts, eim, kicad, orcaslicer, tio (hardware/3D/PCB),
-  # baobab, ocrmypdf, poppler, tectonic (occasional, install on demand).
+  # baobab, ocrmypdf, poppler, tectonic (occasional, install on demand),
+  # mariadb (a 251M database SERVER that was only ever a build dependency —
+  # see the capability's own note).
   - id: full
     desc: "Full workstation — development, data tooling, and desktop apps"
     answers:
@@ -40,7 +42,6 @@ presets:
       - duckdb
       - act
       - check-merged-branches
-      - mariadb
       - crane
       # AI / editors
       - opencode
