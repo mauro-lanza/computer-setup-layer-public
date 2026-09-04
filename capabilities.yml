@@ -52,23 +52,37 @@ capabilities:
     desc: "Colima (lightweight Docker runtime)"
     type: formula
     packages: colima
-  # NOT in any preset, on purpose. This is the full database SERVER (251M), and
-  # it was never wanted as one — it was installed because building `mysqlclient`
-  # from source needs `mysql_config` and the client headers, which this formula
-  # happens to drag along.
+  # The MySQL/MariaDB C client library — headers and `mysql_config`, no server.
   #
-  # That reason has expired: the repo that pulled it in has `mysqlclient`
-  # commented out as unused, and the one project still speaking MySQL uses
-  # `pymysql`, which is pure Python and compiles nothing.
+  # This replaced `mariadb` (a 251M database SERVER) in session 12. The server
+  # was never wanted as one: it got installed because building `mysqlclient`
+  # from source needs `mysql_config` and the client headers, and that formula
+  # happens to drag them along. Nothing ever ran a database — `brew services`
+  # reported none and there was no process.
   #
-  # If the build dependency ever comes back, `mariadb-connector-c` is the right
-  # formula — it is the client library alone. Note that a faster installer does
-  # not help here: uv resolves the same PyPI wheels pip does, so a package with
-  # no wheel for this platform is still built from source either way.
-  - id: mariadb
-    desc: "MariaDB database server (only needed to BUILD mysqlclient; see note)"
+  # NOT in any preset, because the need is currently dormant: the repo that
+  # pulled it in has `mysqlclient` commented out as unused, and the one project
+  # still speaking MySQL uses `pymysql`, which is pure Python and compiles
+  # nothing. Select it when a build actually asks for it.
+  #
+  # A faster installer does not remove the need. uv resolves the same PyPI
+  # wheels pip does, so a package with no wheel for this platform is still
+  # built from source either way.
+  #
+  # KEG-ONLY, and deliberately left that way: Homebrew does not symlink it
+  # because it conflicts with `mariadb`, so `mysql_config` is NOT on PATH after
+  # installing. That is correct — a build-time dependency has no business on
+  # the interactive PATH. Export it for the one command that needs it:
+  #
+  #   PATH="{{ homebrew_prefix }}/opt/mariadb-connector-c/bin:$PATH" uv sync
+  #
+  # No shell snippet ships for this on purpose: a permanent PATH entry for a
+  # dormant build dependency is exactly the kind of thing that is impossible to
+  # attribute two years later.
+  - id: mariadb-connector-c
+    desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
     type: formula
-    packages: mariadb
+    packages: mariadb-connector-c
   - id: fswatch
     desc: "File system watcher (fswatch)"
     type: formula

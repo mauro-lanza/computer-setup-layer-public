@@ -16,8 +16,7 @@ presets:
   # `computer-setup layers lint` so the omission stays a choice rather than an
   # oversight: bitmap-fonts, eim, kicad, orcaslicer, tio (hardware/3D/PCB),
   # baobab, ocrmypdf, poppler, tectonic (occasional, install on demand),
-  # mariadb (a 251M database SERVER that was only ever a build dependency —
-  # see the capability's own note).
+  # mariadb-connector-c (a build dependency, dormant — see the capability note).
   - id: full
     desc: "Full workstation — development, data tooling, and desktop apps"
     answers:
