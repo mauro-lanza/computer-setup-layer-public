@@ -4,14 +4,25 @@
 # Lists append across layers; scalars are overridden by higher-priority layers.
 
 # ─── Homebrew baseline (homebrew role) ───────────────────────────────────────
-# Formulae always installed. git/gh/yq/ansible are also bootstrap prerequisites
+# Formulae always installed. git/gh/yq/uv are also bootstrap prerequisites
 # (installed in Phase 0); listing them here keeps them under drift management.
+#
+# `ansible` is deliberately ABSENT. The engine runs a pinned ansible-core
+# installed by `uv` into ~/.local/share/computer-setup/runtime, so that an
+# unattended `brew upgrade` cannot move the fleet across an ansible-core major
+# overnight. See runtime.yml in the engine repo. The Homebrew formula was also
+# the 530M community bundle of ~800 collections, of which this playbook uses
+# exactly two — and the one it needs is already installed, pinned, from
+# requirements.yml.
+#
+# Nothing puts that runtime on PATH: it is the engine's private interpreter.
+# Develop against the repo with a project venv, as with any Python project.
 homebrew_baseline_formulae:
   - git
   - gh
   - jq
   - gnupg
-  - ansible
+  - uv
   - pre-commit
   - tree
   - yq

@@ -25,7 +25,6 @@ presets:
     capabilities:
       # Runtimes and package tooling
       - nvm
-      - uv
       - tfenv
       - python-311
       # Development
@@ -73,4 +72,3 @@ presets:
       drift-agents: "false"
     capabilities:
       - ripgrep
-      - uv

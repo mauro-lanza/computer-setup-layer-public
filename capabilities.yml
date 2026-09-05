@@ -16,10 +16,6 @@ capabilities:
     type: formula
     packages: nvm
     adopt_if_present: "{{ homebrew_prefix }}/opt/nvm/nvm.sh"
-  - id: uv
-    desc: "Fast Python package manager (uv)"
-    type: formula
-    packages: uv
   - id: ansible-lint
     desc: "ansible-lint (required to develop computer-setup itself)"
     type: formula
