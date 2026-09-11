@@ -3,6 +3,15 @@
   "model": "{{ ai_default_model }}",
   "experimental": { "disable_paste_summary": true },
   "instructions": ["code-style.md"],
+{% if 'codanna' in computer_setup_active_capabilities %}
+  "mcp": {
+    "codanna": {
+      "type": "local",
+      "command": ["codanna", "--config", ".codanna/settings.toml", "serve", "--watch"],
+      "enabled": true
+    }
+  },
+{% endif %}
   "permission": {
     "bash": {
       "*": "ask",

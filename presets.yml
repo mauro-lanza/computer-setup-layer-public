@@ -44,6 +44,7 @@ presets:
       # AI / editors
       - opencode
       - opencode-desktop
+      - codanna
       - vscode
       - vscode-extensions
       - zed

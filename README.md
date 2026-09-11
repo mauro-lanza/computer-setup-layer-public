@@ -17,8 +17,9 @@ Shareable baseline that any adopter can use as-is or fork.
 | `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the `font-meslo-lg-nerd-font` cask is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
 | `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
-| `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |
+| `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
+| `templates/scripts/codanna-init.j2` | codanna bootstrap (register path + pin the embedding model + index) — deployed by the `codanna` capability. Bakes in the layers' `repositories` list, so `--all-repos` adopts every declared checkout |
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
 data. A capability declares `config: [{ src, dest }]` and the generic
