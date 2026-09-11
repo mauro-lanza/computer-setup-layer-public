@@ -170,15 +170,10 @@ capabilities:
     desc: "Codanna (local code intelligence + semantic search MCP server)"
     type: formula
     packages: codanna
-    # Wired into opencode.json's `mcp` block only while this capability is
-    # active — see the conditional there.
-    #
-    # Indexing stays opt-in: the MCP server reads a `.codanna/` that only
-    # exists where you ran `codanna-init`, so installing this capability
-    # indexes nothing on its own. `codanna-init --all-repos` adopts every
-    # repository declared by the active layers in one go — deliberately a
-    # command rather than an apply-time step, since indexing every repo costs
-    # real time and disk.
+    # Wired into opencode.json's `mcp` block while active — see the
+    # conditional there. Installing this indexes nothing: `codanna-init`
+    # adopts a repo, `--all-repos` every declared checkout. Indexes only
+    # codanna's 15 parsed languages, so infra/dbt repos gain little.
     config:
       - src: scripts/codanna-init
         dest: "{{ home_dir }}/.local/bin/codanna-init"

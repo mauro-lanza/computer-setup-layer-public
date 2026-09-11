@@ -1,34 +1,20 @@
 {#
   Deployed to ~/.local/bin/codanna-init by the `codanna` capability.
-
-  Same convention as check_merged_branches.j2: the shell body lives inside
-  {% raw %} blocks, and only the templated config block below sits outside
-  them, so shell syntax never has to be escaped for Jinja.
+  Shell body lives in {% raw %} blocks so bash syntax never meets Jinja;
+  only the repository list below is templated. Keep it that way.
 #}
 {% raw %}#!/bin/bash
-# Initializes codanna in a repository and pins its embedding model to
-# JinaEmbeddingsV2BaseCode instead of the AllMiniLML6V2 default.
-#
-# WHY THE MODEL SWAP: codanna's settings.toml documents only three
-# alternatives to the default, but its parser accepts a much wider set
-# (upstream src/vector/embedding.rs) that includes JinaEmbeddingsV2BaseCode —
-# 768-dim, trained on code rather than general prose. Config-only swap: same
-# local fastembed backend, no new dependency, no network service.
-#
-# Targets bash 3.2 (what macOS ships as /bin/bash) — same constraint as
-# check_merged_branches.
+# Registers a repository with codanna and indexes it.
+# Targets bash 3.2, same constraint as check_merged_branches.
 
 set -euo pipefail
 
-MODEL="JinaEmbeddingsV2BaseCode"
 REINDEX=0
 {% endraw %}
 # The repositories declared by the active layers, baked in at deploy time.
-# Using the declared list rather than walking the filesystem keeps --all-repos
-# to repos this setup actually owns. Repos marked `active: false` are skipped.
-# NOTE: a per-machine ~/.config/computer-setup/repositories.yml override is NOT
-# reflected here — that file is resolved inside the `repositories` role, which
-# is tagged `never`, so it is not applied when this template renders.
+# `active: false` entries are skipped. NOTE: a per-machine
+# ~/.config/computer-setup/repositories.yml override is NOT reflected here —
+# it resolves inside the `repositories` role, which is tagged `never`.
 CODANNA_REPOS=$(cat <<'CODANNA_REPO_LIST'
 {% for repo in repositories | default([]) if repo.active | default(true) %}
 {{ repo.folder | expanduser }}
@@ -40,59 +26,37 @@ usage() {
   cat <<'EOF'
 Usage: codanna-init [--all-repos] [--reindex] [path]
 
-Initializes codanna in a repository: registers it as an indexed path, pins the
-embedding model to the code-trained JinaEmbeddingsV2BaseCode, and indexes it.
+Registers a repository with codanna and builds its index.
 
-  --all-repos   Run against every repository declared by the computer-setup
-                layers (not a filesystem scan). Missing checkouts are skipped.
-  --reindex     Rebuild the index even if the repo is already set up correctly.
+  --all-repos   Every repository declared by the computer-setup layers (not a
+                filesystem scan). Missing checkouts are skipped.
+  --reindex     Rebuild even if an index already exists.
   -h, --help    Show this message.
 
-Safe to re-run: a repo already on the pinned model is left alone unless
---reindex is given, so --all-repos is cheap the second time.
+codanna only parses its 15 supported languages — YAML, HCL, SQL and shell are
+not among them, so an infra or dbt repo will index close to nothing.
 EOF
-}
-
-# Rewrites `model = ...` in place, but only inside the [semantic_search]
-# section. A targeted edit rather than a section rewrite: it preserves
-# `threshold`, `embedding_threads` and the upstream comments.
-pin_model() {
-  awk -v model="$MODEL" '
-    /^\[/                { in_ss = ($0 == "[semantic_search]") }
-    in_ss && /^model = / { print "model = \"" model "\""; next }
-                         { print }
-  ' "$1" > "$1.tmp"
-  mv "$1.tmp" "$1"
 }
 
 init_one() {
   local dir="$1"
   local settings="$dir/.codanna/settings.toml"
-  local fresh=0
 
-  if [ ! -f "$settings" ]; then
-    ( cd "$dir" && codanna init )
-    fresh=1
-  fi
+  [ -f "$settings" ] || ( cd "$dir" && codanna init )
 
-  # `codanna init` leaves `indexed_paths = []`, and `codanna index` then exits
-  # 1 with "No paths to index" — registering the repo is required, not a
-  # nicety. add-dir rewrites settings.toml, so it must run BEFORE the model
-  # pin below or it would serialize the old value back over it.
+  # `codanna init` leaves `indexed_paths = []` and `codanna index` then exits 1.
   if grep -q '^indexed_paths = \[\]' "$settings"; then
     ( cd "$dir" && codanna add-dir . )
   fi
 
-  if grep -q "^model = \"$MODEL\"" "$settings" && [ "$fresh" -eq 0 ] && [ "$REINDEX" -eq 0 ]; then
-    echo "==> $dir: already on $MODEL, skipping (use --reindex to force)"
+  # index.meta only appears after a real index; `codanna init` alone already
+  # creates .codanna/index/, so the directory itself proves nothing.
+  if [ -f "$dir/.codanna/index/index.meta" ] && [ "$REINDEX" -eq 0 ]; then
+    echo "==> $dir: already indexed, skipping (use --reindex to rebuild)"
     return 0
   fi
 
   echo "==> $dir"
-  pin_model "$settings"
-  # --force: the model and its embedding dimension are baked into the on-disk
-  # vector store, so changing the model requires a full rebuild or semantic
-  # search stays silently disabled.
   ( cd "$dir" && codanna index --force )
 }
 
@@ -119,7 +83,6 @@ if [ "$ALL_REPOS" -eq 1 ]; then
       echo "==> $repo: not checked out, skipping"
       continue
     fi
-    # Keep going on failure: one bad repo should not abandon the rest.
     init_one "$repo" || { echo "!!! $repo: failed" >&2; status=1; }
   done <<EOF
 $CODANNA_REPOS
