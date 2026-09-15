@@ -2,6 +2,7 @@
 # <bitbar.title>computer-setup</bitbar.title>
 # <bitbar.desc>Machine configuration: drift, sync health, and live run progress.</bitbar.desc>
 # <bitbar.dependencies>python3</bitbar.dependencies>
+# <swiftbar.refreshOnOpen>true</swiftbar.refreshOnOpen>
 #
 # A SwiftBar plugin. SwiftBar runs this every 15s and renders its stdout.
 #
@@ -28,6 +29,7 @@ import time
 
 STATE = os.path.expanduser("~/.local/state/computer-setup")
 CLI = os.path.expanduser("~/.local/bin/computer-setup")
+LOG = os.path.expanduser("~/Library/Logs/computer-setup.log")
 STALE_DAYS = 14
 # Past this with no new line, a run with no end marker was killed rather than
 # still going. Matches `computer-setup progress`.
@@ -81,10 +83,26 @@ def esc(text):
 
 
 def action(label, verb, **params):
-    """A menu item that runs `computer-setup <verb>` in Terminal."""
-    opts = "shell=%s param1=%s terminal=true refresh=true" % (CLI, verb)
+    """A menu item that runs `computer-setup <verb>` in Terminal.
+
+    `bash=`, not `shell=`. SwiftBar parses exactly three action parameters —
+    bash, href, refresh — and silently ignores anything else. With `shell=`
+    ignored there was no script to run, so `terminal=true` opened Terminal and
+    sat there, which looked like a permissions problem and was not.
+    """
+    opts = "bash=%s param1=%s terminal=true refresh=true" % (CLI, verb)
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
+
+
+def open_file(label, path, **params):
+    """A menu item that opens a file in whatever macOS uses for it.
+
+    `href=file://…` rather than a command, so no Terminal window appears for
+    something that is only being read.
+    """
+    extra = " ".join("%s=%s" % kv for kv in params.items())
+    print("%s | href=file://%s %s" % (esc(label), path.replace(" ", "%20"), extra))
 
 
 def main():
@@ -162,9 +180,15 @@ def main():
         print("---")
     else:
         when = (status.get("finished") or "")[:16].replace("T", " ")
-        print("Last %s — %s | sfimage=clock" % (esc(status.get("mode", "?")),
-                                                esc(status.get("result", "?"))))
-        print("%s · %ss | size=11 color=gray" % (esc(when), status.get("duration_seconds", "?")))
+        # macOS highlights every menu item on hover and SwiftBar has no
+        # "disabled" parameter, so a row that looks clickable had better be.
+        # These open the log rather than sitting inert under the cursor.
+        open_file("Last %s — %s" % (esc(status.get("mode", "?")),
+                                    esc(status.get("result", "?"))),
+                  LOG, sfimage="clock",
+                  tooltip="Open%20the%20log")
+        print("%s · %ss | size=11 color=gray href=file://%s" % (
+            esc(when), status.get("duration_seconds", "?"), LOG))
         if status.get("partial"):
             print("partial run — only part of the machine was evaluated | size=11 color=gray")
 
@@ -220,16 +244,26 @@ def main():
         action("Upgrade packages", "upgrade", sfimage="arrow.up.circle")
     else:
         print("A run is in progress | color=gray")
-    action("Open the log", "log", sfimage="doc.text")
+    action("Tail the log", "log", sfimage="doc.text")
+    open_file("Open the log file", LOG, sfimage="doc.plaintext")
 
     if history:
         print("Recent runs | sfimage=list.bullet")
         for entry in reversed(history):
             mark = "*" if entry.get("partial") else ""
-            print("--%s%s  %s  %ss  (%s changed) | font=Menlo size=11" % (
+            label = "%s%s  %s  %ss  (%s changed)" % (
                 esc((entry.get("finished") or "")[:16].replace("T", " ")),
                 mark, esc(entry.get("result", "?")),
-                entry.get("duration_seconds", "?"), entry.get("changed", "?")))
+                entry.get("duration_seconds", "?"), entry.get("changed", "?"))
+            # Every run opens the SAME file, because that is all there is: one
+            # rolling log, ~3 days deep, and only SCHEDULED runs write to it —
+            # an interactive `apply` prints to your terminal and is never
+            # recorded. Per-run logs would need the runner to tee somewhere
+            # keyed on the run id; until then, promising one per row would be a
+            # lie told ten times.
+            print("--%s | font=Menlo size=11 href=file://%s" % (label, LOG))
+        print("--Opens the rolling log: scheduled runs only, ~3 days "
+              "| size=11 color=gray")
 
     print("Refresh | refresh=true sfimage=arrow.clockwise")
 
