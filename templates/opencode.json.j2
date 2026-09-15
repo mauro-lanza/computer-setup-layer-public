@@ -2,7 +2,7 @@
   "$schema": "https://opencode.ai/config.json",
   "model": "{{ ai_default_model }}",
   "experimental": { "disable_paste_summary": true },
-  "instructions": ["code-style.md"],
+  "instructions": ["code-style.md", "tool-use.md"],
 {% if 'codanna' in computer_setup_active_capabilities %}
   "mcp": {
     "codanna": {
@@ -24,8 +24,8 @@
       "ls *": "allow",
       "pwd": "allow",
       "pwd *": "allow",
-      "cat": "allow",
-      "cat *": "allow",
+      "cat": "ask",
+      "cat *": "ask",
       "head": "allow",
       "head *": "allow",
       "tail": "allow",
@@ -62,11 +62,11 @@
       "date *-s*": "deny",
       "date *--set*": "deny",
 
-      "tree": "allow",
-      "tree *": "allow",
+      "tree": "ask",
+      "tree *": "ask",
       "tree *-o*": "deny",
 
-      "find *": "allow",
+      "find *": "ask",
       "find *-delete*": "deny",
       "find *-exec*": "deny",
       "find *-fprint*": "deny",
@@ -76,11 +76,13 @@
       "rg *--pre*": "deny",
       "rg *--hostname-bin*": "deny",
 
-      "sed *": "allow",
+      "sed *": "ask",
       "sed *-e*": "deny",
       "sed *-f*": "deny",
       "sed *--expression*": "deny",
       "sed *--file*": "deny",
+      "sed *-i*": "deny",
+      "sed *--in-place*": "deny",
 
       "sort *": "allow",
       "sort *-o*": "deny",

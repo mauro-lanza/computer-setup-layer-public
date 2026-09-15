@@ -101,6 +101,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/opencode.json"
       - src: opencode/code-style.md
         dest: "{{ home_dir }}/.config/opencode/code-style.md"
+      - src: opencode/tool-use.md
+        dest: "{{ home_dir }}/.config/opencode/tool-use.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     type: formula
