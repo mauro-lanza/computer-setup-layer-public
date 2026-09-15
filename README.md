@@ -19,10 +19,41 @@ Shareable baseline that any adopter can use as-is or fork.
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
 | `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
+| `files/swiftbar/*` | The menu bar readout and its Terminal action — deployed by the `swiftbar` capability. See below |
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
 data. A capability declares `config: [{ src, dest }]` and the generic
 `layer_configs` role deploys it, so adding one needs no orchestrator change.
+
+### The menu bar readout
+
+The `swiftbar` capability installs SwiftBar and deploys a plugin that renders
+`computer-setup`'s state: drift, sync health, orphans, and live progress while a
+run is happening.
+
+It only **reads** — the four JSON files the engine already writes, every 15s. It
+runs no Ansible on its refresh cycle: a check takes ~17s and the 10:00 agent
+already runs one. The CLI stays the API, so anything the menu shows,
+`computer-setup` can already tell you, and the plugin survives an engine change.
+
+It runs on `/usr/bin/python3`, not the engine's pinned interpreter, so it still
+renders when the runtime is broken — which is exactly when someone looks at it.
+
+Three things about SwiftBar that are not obvious and cost a session each:
+
+- **Only `bash`, `href` and `refresh` are action parameters.** Anything else is
+  parsed and silently ignored.
+- **`terminal=true` is the default, and it needs Accessibility permission.** It
+  drives Terminal by AppleScript, and when a Terminal window already exists —
+  including minimized or on another Space — it sends a ⌘T *keystroke* through
+  System Events. SwiftBar never requests that permission and never mentions it;
+  the script aborts after activating Terminal, so a window comes forward empty
+  (SwiftBar issue #456). `upgrade` therefore goes through `open` on a `.command`
+  file, which needs no permission at all. Everything else runs in the background.
+- **Every file in the plugin directory is imported as a plugin and executed.**
+  The `.command` file lived there briefly and appeared in the menu bar as a
+  second, broken item. It is deployed to `~/.local/share/computer-setup/actions/`
+  instead; the plugin directory holds plugins and nothing else.
 
 ### files/ vs templates/
 
