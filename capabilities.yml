@@ -99,11 +99,13 @@ capabilities:
       - src: swiftbar/computer-setup.15s.py
         dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
         executable: true
-      # Opened by the menu item rather than driven through SwiftBar's
-      # `terminal=true`, which needs Accessibility permission it never asks for.
-      # See the comment in the file.
+      # Deployed OUTSIDE the plugin directory on purpose. SwiftBar imports every
+      # file it finds there as a plugin and runs it — so this landed in the menu
+      # bar as a second, broken item, and SwiftBar executed it. Nothing bad
+      # happened only because `computer-setup upgrade` refuses to run without a
+      # TTY. The plugin directory holds plugins and nothing else.
       - src: swiftbar/upgrade.command
-        dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/upgrade.command"
+        dest: "{{ home_dir }}/.local/share/computer-setup/actions/upgrade.command"
         executable: true
 
   - id: fswatch

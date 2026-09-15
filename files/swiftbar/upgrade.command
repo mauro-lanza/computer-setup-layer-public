@@ -15,6 +15,11 @@
 # extension to Terminal and runs it. So the menu item opens this, and this runs
 # the command.
 #
+# NOT deployed into the SwiftBar plugin directory. SwiftBar imports every file
+# it finds there as a plugin and executes it — this one appeared in the menu bar
+# as a second, broken item and was run on load. It was harmless only because
+# `computer-setup upgrade` refuses to run without a TTY.
+#
 # Upgrade is the only action that needs a terminal in the first place — it
 # prompts for confirmation and for a sudo password for casks, and refuses to run
 # without a TTY. Everything else the menu offers runs in the background.

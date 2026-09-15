@@ -31,7 +31,7 @@ STATE = os.path.expanduser("~/.local/state/computer-setup")
 CLI = os.path.expanduser("~/.local/bin/computer-setup")
 LOG_DIR = os.path.expanduser("~/Library/Logs/computer-setup")
 UPGRADE_COMMAND = os.path.expanduser(
-    "~/.local/share/computer-setup/swiftbar/upgrade.command")
+    "~/.local/share/computer-setup/actions/upgrade.command")
 STALE_DAYS = 14
 # Past this with no new line, a run with no end marker was killed rather than
 # still going. Matches `computer-setup progress`.
