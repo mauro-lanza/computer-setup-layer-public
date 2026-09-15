@@ -109,6 +109,14 @@ git_global_gitignore_entries:
 # ─── macOS system defaults (macos role) ──────────────────────────────────────
 # Native YAML types (not strings) for osx_defaults idempotency.
 macos_defaults:
+  # Where SwiftBar looks for plugins. Set declaratively so a fresh machine never
+  # shows the "choose a plugin folder" dialog — an interactive prompt during an
+  # unattended setup is a setup that silently never finishes.
+  # Only meaningful when the `swiftbar` capability is selected; harmless if not.
+  - domain: com.ameba.SwiftBar
+    key: PluginDirectory
+    type: string
+    value: "{{ home_dir }}/.local/share/computer-setup/swiftbar"
   - domain: NSGlobalDomain          # Finder: show all file extensions
     key: AppleShowAllExtensions
     type: bool

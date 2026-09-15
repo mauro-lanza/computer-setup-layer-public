@@ -79,6 +79,27 @@ capabilities:
     desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
     type: formula
     packages: mariadb-connector-c
+  # A menu bar readout of this machine's configuration: drift, sync health, and
+  # live progress while a run is happening.
+  #
+  # SwiftBar is a `.app` cask, not a `.pkg` — so no sudo, which means the
+  # unattended upgrade agent can install and update it like anything else. That
+  # is the whole reason this is possible; swiftDialog was ruled out for exactly
+  # the opposite reason.
+  #
+  # The plugin only READS the four JSON files the engine already writes. It
+  # invokes no Ansible on its refresh cycle: a check takes ~17s and the 10:00
+  # agent already runs one. The CLI stays the API — so this survives an engine
+  # change, and anything it can show, `computer-setup` can already tell you.
+  - id: swiftbar
+    desc: "SwiftBar menu bar readout of machine configuration"
+    type: cask
+    packages: swiftbar
+    config:
+      - src: swiftbar/computer-setup.15s.py
+        dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
+        executable: true
+
   - id: fswatch
     desc: "File system watcher (fswatch)"
     type: formula
