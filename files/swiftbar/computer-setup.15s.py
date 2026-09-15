@@ -29,7 +29,7 @@ import time
 
 STATE = os.path.expanduser("~/.local/state/computer-setup")
 CLI = os.path.expanduser("~/.local/bin/computer-setup")
-LOG = os.path.expanduser("~/Library/Logs/computer-setup.log")
+LOG_DIR = os.path.expanduser("~/Library/Logs/computer-setup")
 STALE_DAYS = 14
 # Past this with no new line, a run with no end marker was killed rather than
 # still going. Matches `computer-setup progress`.
@@ -82,15 +82,19 @@ def esc(text):
     return str(text).replace("|", "\u2502").replace("\n", " ")
 
 
-def action(label, verb, **params):
-    """A menu item that runs `computer-setup <verb>` in Terminal.
+def action(label, verb, terminal=False, **params):
+    """A menu item that runs `computer-setup <verb>`.
 
-    `bash=`, not `shell=`. SwiftBar parses exactly three action parameters —
-    bash, href, refresh — and silently ignores anything else. With `shell=`
-    ignored there was no script to run, so `terminal=true` opened Terminal and
-    sat there, which looked like a permissions problem and was not.
+    `terminal=false` runs it in the BACKGROUND, which is the right default here
+    and only became so once progress streaming existed: click, and the menu bar
+    icon turns into a live progress indicator instead of a window appearing.
+
+    Terminal is reserved for commands that genuinely need a TTY. `upgrade` is
+    the only one — it prompts for confirmation and for a sudo password for
+    casks, and refuses outright to run without a terminal.
     """
-    opts = "bash=%s param1=%s terminal=true refresh=true" % (CLI, verb)
+    opts = "bash=%s param1=%s terminal=%s refresh=true" % (
+        CLI, verb, "true" if terminal else "false")
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
 
@@ -107,9 +111,19 @@ def open_file(label, path, **params):
 
 def main():
     status = read_json("last-run.json")
+    # Each history entry now carries its own log, so a recent-runs list can
+    # actually take you to the output that run produced.
     manifest = read_json("managed-paths.json")
     progress = read_lines("progress.jsonl")
     history = read_lines("history.jsonl", 10)
+    # The newest run's own log, if it still exists (successful ones are pruned
+    # past the retention window; failed ones are kept).
+    latest_log = None
+    for entry in reversed(history):
+        candidate = entry.get("log")
+        if candidate and os.path.exists(candidate):
+            latest_log = candidate
+            break
 
     # ── is a run happening right now? ────────────────────────────────────────
     running = None
@@ -183,12 +197,17 @@ def main():
         # macOS highlights every menu item on hover and SwiftBar has no
         # "disabled" parameter, so a row that looks clickable had better be.
         # These open the log rather than sitting inert under the cursor.
-        open_file("Last %s — %s" % (esc(status.get("mode", "?")),
-                                    esc(status.get("result", "?"))),
-                  LOG, sfimage="clock",
-                  tooltip="Open%20the%20log")
-        print("%s · %ss | size=11 color=gray href=file://%s" % (
-            esc(when), status.get("duration_seconds", "?"), LOG))
+        label = "Last %s — %s" % (esc(status.get("mode", "?")),
+                                  esc(status.get("result", "?")))
+        if latest_log:
+            open_file(label, latest_log, sfimage="clock",
+                      tooltip="Open%20this%20run%27s%20log")
+            print("%s · %ss | size=11 color=gray href=file://%s" % (
+                esc(when), status.get("duration_seconds", "?"), latest_log))
+        else:
+            print("%s | sfimage=clock" % label)
+            print("%s · %ss | size=11 color=gray" % (
+                esc(when), status.get("duration_seconds", "?")))
         if status.get("partial"):
             print("partial run — only part of the machine was evaluated | size=11 color=gray")
 
@@ -239,13 +258,18 @@ def main():
     # ── actions ──────────────────────────────────────────────────────────────
     print("---")
     if not running:
-        action("Check for drift", "check", sfimage="magnifyingglass")
-        action("Apply now", "apply", sfimage="arrow.triangle.2.circlepath")
-        action("Upgrade packages", "upgrade", sfimage="arrow.up.circle")
+        action("Check for drift", "check", sfimage="magnifyingglass",
+               tooltip="Runs%20in%20the%20background")
+        action("Apply now", "apply", sfimage="arrow.triangle.2.circlepath",
+               tooltip="Runs%20in%20the%20background")
+        # The one that must have a terminal: it asks for confirmation and for a
+        # sudo password for casks, and refuses to run without a TTY.
+        action("Upgrade packages…", "upgrade", terminal=True,
+               sfimage="arrow.up.circle", tooltip="Opens%20Terminal%20to%20confirm")
     else:
         print("A run is in progress | color=gray")
-    action("Tail the log", "log", sfimage="doc.text")
-    open_file("Open the log file", LOG, sfimage="doc.plaintext")
+    if latest_log:
+        open_file("Open this run's log", latest_log, sfimage="doc.plaintext")
 
     if history:
         print("Recent runs | sfimage=list.bullet")
@@ -255,15 +279,15 @@ def main():
                 esc((entry.get("finished") or "")[:16].replace("T", " ")),
                 mark, esc(entry.get("result", "?")),
                 entry.get("duration_seconds", "?"), entry.get("changed", "?"))
-            # Every run opens the SAME file, because that is all there is: one
-            # rolling log, ~3 days deep, and only SCHEDULED runs write to it —
-            # an interactive `apply` prints to your terminal and is never
-            # recorded. Per-run logs would need the runner to tee somewhere
-            # keyed on the run id; until then, promising one per row would be a
-            # lie told ten times.
-            print("--%s | font=Menlo size=11 href=file://%s" % (label, LOG))
-        print("--Opens the rolling log: scheduled runs only, ~3 days "
-              "| size=11 color=gray")
+            # Each run carries the path to its OWN log now. Runs older than
+            # the retention window have had theirs pruned — unless they failed,
+            # which are kept — so the row stays but stops being a link.
+            entry_log = entry.get("log")
+            if entry_log and os.path.exists(entry_log):
+                print("--%s | font=Menlo size=11 href=file://%s"
+                      % (label, entry_log.replace(" ", "%20")))
+            else:
+                print("--%s | font=Menlo size=11 color=gray" % label)
 
     print("Refresh | refresh=true sfimage=arrow.clockwise")
 
