@@ -30,6 +30,8 @@ import time
 STATE = os.path.expanduser("~/.local/state/computer-setup")
 CLI = os.path.expanduser("~/.local/bin/computer-setup")
 LOG_DIR = os.path.expanduser("~/Library/Logs/computer-setup")
+UPGRADE_COMMAND = os.path.expanduser(
+    "~/.local/share/computer-setup/swiftbar/upgrade.command")
 STALE_DAYS = 14
 # Past this with no new line, a run with no end marker was killed rather than
 # still going. Matches `computer-setup progress`.
@@ -82,19 +84,31 @@ def esc(text):
     return str(text).replace("|", "\u2502").replace("\n", " ")
 
 
-def action(label, verb, terminal=False, **params):
-    """A menu item that runs `computer-setup <verb>`.
+def action(label, verb, **params):
+    """A menu item that runs `computer-setup <verb>` in the background.
 
-    `terminal=false` runs it in the BACKGROUND, which is the right default here
-    and only became so once progress streaming existed: click, and the menu bar
-    icon turns into a live progress indicator instead of a window appearing.
+    Background is the right default here, and only became so once progress
+    streaming existed: click, and the menu bar icon turns into a live progress
+    indicator instead of a window appearing.
 
-    Terminal is reserved for commands that genuinely need a TTY. `upgrade` is
-    the only one — it prompts for confirmation and for a sudo password for
-    casks, and refuses outright to run without a terminal.
+    Nothing here uses SwiftBar's `terminal=true`. That drives Terminal through
+    AppleScript, and when a Terminal window already exists it sends a ⌘T
+    keystroke via System Events — which needs Accessibility permission SwiftBar
+    never requests. It fails silently after activating Terminal, so a window
+    comes forward showing nothing. See open_in_terminal for the way round it.
     """
-    opts = "bash=%s param1=%s terminal=%s refresh=true" % (
-        CLI, verb, "true" if terminal else "false")
+    opts = "bash=%s param1=%s terminal=false refresh=true" % (CLI, verb)
+    extra = " ".join("%s=%s" % kv for kv in params.items())
+    print("%s | %s %s" % (esc(label), opts, extra))
+
+
+def open_in_terminal(label, command_file, **params):
+    """A menu item that opens a .command file, which macOS runs in Terminal.
+
+    `open` needs no permission; SwiftBar's own terminal support needs
+    Accessibility. Used only for `upgrade`, which genuinely requires a TTY.
+    """
+    opts = "bash=/usr/bin/open param1=%s terminal=false refresh=false" % command_file
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
 
@@ -264,8 +278,9 @@ def main():
                tooltip="Runs%20in%20the%20background")
         # The one that must have a terminal: it asks for confirmation and for a
         # sudo password for casks, and refuses to run without a TTY.
-        action("Upgrade packages…", "upgrade", terminal=True,
-               sfimage="arrow.up.circle", tooltip="Opens%20Terminal%20to%20confirm")
+        open_in_terminal("Upgrade packages…", UPGRADE_COMMAND,
+                         sfimage="arrow.up.circle",
+                         tooltip="Opens%20Terminal%20to%20confirm")
     else:
         print("A run is in progress | color=gray")
     if latest_log:
