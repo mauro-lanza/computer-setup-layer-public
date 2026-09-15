@@ -115,8 +115,10 @@ capabilities:
     # Third-party tap: the package cannot be resolved without it.
     tap: anomalyco/tap
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
-    # `instructions` in opencode.json references code-style.md by a path
-    # relative to the config file, so the two must land in the same directory.
+    # `instructions` in opencode.json names these by a path relative to the
+    # config file, so they must land in the same directory. Adding an entry
+    # there without adding it here deploys a config that points at a file which
+    # is not present — nothing validates the two lists against each other.
     config:
       - src: opencode.json
         dest: "{{ home_dir }}/.config/opencode/opencode.json"
@@ -124,6 +126,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/code-style.md"
       - src: opencode/tool-use.md
         dest: "{{ home_dir }}/.config/opencode/tool-use.md"
+      - src: opencode/vcs-conventions.md
+        dest: "{{ home_dir }}/.config/opencode/vcs-conventions.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     type: formula
