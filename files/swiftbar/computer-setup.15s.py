@@ -6,21 +6,22 @@
 #
 # A SwiftBar plugin. SwiftBar runs this every 15s and renders its stdout.
 #
-# IT ONLY READS. Four JSON files written by the engine's callback plugin, all in
-# ~/.local/state/computer-setup. No Ansible is invoked on the refresh cycle: a
+# IT ONLY READS. `computer-setup status --json` for the run summary and
+# staleness, and three JSON files in ~/.local/state/computer-setup for the
+# inventory, the history and live progress. No Ansible on the refresh cycle: a
 # check takes ~17s and the 10:00 agent already runs one, so polling it here
 # would burn a CPU core and a network round trip every 15 seconds to re-learn
 # something already on disk.
 #
-# Writes happen only when you click, and they open Terminal on purpose. An apply
-# can take minutes, can prompt for sudo, and can print real errors — hiding that
-# behind a spinner is how you get a UI that lies about what happened. The button
-# starts the thing you would have typed.
+# Writes happen only when you click. `check` and `apply` run in the BACKGROUND
+# and are watched through the progress indicator; only `upgrade` opens a
+# terminal, because it prompts for confirmation and a sudo password and refuses
+# to run without a TTY.
 #
 # System python3 (/usr/bin/python3, from the Command Line Tools) rather than the
 # engine's pinned interpreter: this must render even when the runtime is broken,
-# which is exactly when someone looks at the menu bar.
-import datetime
+# which is exactly when someone looks at the menu bar. `status` is a bash script
+# that only reads files, so it works then too.
 import json
 import os
 import subprocess
@@ -32,10 +33,30 @@ CLI = os.path.expanduser("~/.local/bin/computer-setup")
 LOG_DIR = os.path.expanduser("~/Library/Logs/computer-setup")
 UPGRADE_COMMAND = os.path.expanduser(
     "~/.local/share/computer-setup/actions/upgrade.command")
-STALE_DAYS = 14
 # Past this with no new line, a run with no end marker was killed rather than
 # still going. Matches `computer-setup progress`.
 STALLED_SECONDS = 300
+
+
+def read_status():
+    """`computer-setup status --json`, or None if it cannot be read.
+
+    Via the CLI rather than reading last-run.json directly, even though this
+    plugin reads the other three files that way. Staleness is the reason: it
+    depends on `last-success` AND on a threshold the engine owns
+    (`drift_correction_stale_after_days`). Recomputing it here meant repeating
+    that number, so a change to it would leave the menu bar quietly disagreeing
+    with `status` about whether a machine had stopped syncing — which is the one
+    thing this exists to surface.
+
+    ~50ms, against a 15s refresh.
+    """
+    try:
+        out = subprocess.run([CLI, "status", "--json"], capture_output=True,
+                             timeout=10, text=True)
+        return json.loads(out.stdout) if out.returncode == 0 else None
+    except Exception:
+        return None
 
 
 def read_json(name):
@@ -58,23 +79,6 @@ def read_lines(name, limit=None):
 def age(name):
     try:
         return time.time() - os.path.getmtime(os.path.join(STATE, name))
-    except Exception:
-        return None
-
-
-def days_since(stamp):
-    """Whole days since an ISO timestamp, or None.
-
-    `datetime` rather than `time.strptime` + `mktime`: struct_time carries no
-    offset, so the parsed `%z` was discarded and the correction had to be
-    guessed. It guessed wrong and reported "-1 days ago".
-    """
-    if not stamp:
-        return None
-    try:
-        moment = datetime.datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%S%z")
-        delta = datetime.datetime.now(datetime.timezone.utc) - moment
-        return max(0, delta.days)
     except Exception:
         return None
 
@@ -124,9 +128,8 @@ def open_file(label, path, **params):
 
 
 def main():
-    status = read_json("last-run.json")
-    # Each history entry now carries its own log, so a recent-runs list can
-    # actually take you to the output that run produced.
+    report = read_status()
+    status = (report or {}).get("last_run")
     manifest = read_json("managed-paths.json")
     progress = read_lines("progress.jsonl")
     history = read_lines("history.jsonl", 10)
@@ -162,13 +165,9 @@ def main():
     changed = len((status or {}).get("changed") or [])
     drift = changed if (status or {}).get("mode") == "check" else 0
     failed = len((status or {}).get("failed") or [])
-    last_success = None
-    for entry in reversed(history):
-        if entry.get("result") == "ok":
-            last_success = entry.get("finished")
-            break
-    stale_days = days_since(last_success)
-    stale = stale_days is not None and stale_days >= STALE_DAYS
+    # Both computed by the engine, which owns the threshold — see read_status.
+    stale = bool((report or {}).get("stale"))
+    stale_days = (report or {}).get("days_since_success")
 
     if running:
         if running["launching"] or not running["total"]:
@@ -230,7 +229,12 @@ def main():
             print("%d task(s) FAILED | color=red sfimage=xmark.octagon" % failed)
             for entry in (status.get("failed") or [])[:6]:
                 print("--%s" % esc(entry.get("dest") or entry.get("item") or entry.get("task")))
-            action("Open the log", "log")
+            # Opens the file. `computer-setup log` prints to stdout, and every
+            # action here runs in the background — so running it would have
+            # produced nothing at all, on the one menu item that matters most.
+            if latest_log:
+                open_file("Open the failing run's log", latest_log,
+                          sfimage="doc.plaintext")
 
         print("---")
         if changed:
