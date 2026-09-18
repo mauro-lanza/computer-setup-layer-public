@@ -20,6 +20,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
 | `files/swiftbar/*` | The menu bar readout and its Terminal action — deployed by the `swiftbar` capability. See below |
+| `scripts/check.sh` | This layer's gate. Runs the menu bar plugin against fixture machine states |
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
 data. A capability declares `config: [{ src, dest }]` and the generic
@@ -54,6 +55,30 @@ Three things about SwiftBar that are not obvious and cost a session each:
   The `.command` file lived there briefly and appeared in the menu bar as a
   second, broken item. It is deployed to `~/.local/share/computer-setup/actions/`
   instead; the plugin directory holds plugins and nothing else.
+
+### Running the gate
+
+```bash
+./scripts/check.sh
+```
+
+The engine's `check.sh` cannot cover this — it deliberately names no tool, and
+the plugin is layer data. So the layer carries its own.
+
+It renders the plugin against fixture machine states (converged, drift, failed,
+stale, mid-run, finished, and no CLI at all) and asserts both the output shape
+and the action contract: no `shell=`, no `terminal=true`, `check`/`apply` in the
+background, `upgrade` through `open`, and no action running a command whose
+output would go nowhere.
+
+Fixtures work by pointing `$HOME` at a temporary directory — every path in the
+plugin goes through `os.path.expanduser`, so one variable redirects the state
+directory, the CLI, the logs and the upgrade action at once, and the plugin
+needs no test hook of its own.
+
+A plugin that raises still exits 0 — it renders an error item — so the exit code
+proves nothing and every assertion is on the output. Every failure this catches
+has happened for real and was silent each time.
 
 ### files/ vs templates/
 
