@@ -8,7 +8,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | File | Purpose |
 |---|---|
 | `layer.yml` | Manifest: `name: public`, `schema_version: 1` |
-| `questions.yml` | Machine decisions with one answer — currently the default editor. Prompted by bootstrap; answers stored in `~/.config/computer-setup/prefs.yml` |
+| `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/computer-setup/machine.yml` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
 | `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, upgrade policy |
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
@@ -24,7 +24,7 @@ Shareable baseline that any adopter can use as-is or fork.
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
 data. A capability declares `config: [{ src, dest }]` and the generic
-`layer_configs` role deploys it, so adding one needs no orchestrator change.
+`capability_configs` role deploys it, so adding one needs no orchestrator change.
 
 ### The menu bar readout
 

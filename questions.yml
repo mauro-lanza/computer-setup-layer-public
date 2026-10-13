@@ -1,7 +1,7 @@
 ---
 # Machine decisions this layer offers. Merged (union by id) across layers like
 # capabilities, and prompted by bootstrap; the answers live in
-# ~/.config/computer-setup/prefs.yml.
+# ~/.config/computer-setup/machine.yml.
 #
 # A capability expresses "yes/no, independently". A question expresses a decision
 # with exactly one answer — which editor, where things live. If a choice would
