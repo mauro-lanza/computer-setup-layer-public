@@ -8,12 +8,11 @@ Always use the dedicated tools:
 
 | Task | Use | Never |
 | --- | --- | --- |
-| Read a file | `read` (with `offset`/`limit` for ranges) | `cat`, `head`, `tail`, `sed -n`, `awk` |
+| Read a file or list a directory | `read` (with `offset`/`limit` for ranges) | `cat`, `head`, `tail`, `sed -n`, `awk`, `ls` |
 | Edit a file | `edit` (or `write` to replace wholesale) | `sed -i`, `python - <<'PY'`, `perl -pi` |
 | Create a file | `write` | heredocs, `echo >`, `cat >` |
 | Find files by name | `glob` | `find`, `ls -R` |
 | Search file contents | `grep` | `grep`, `rg`, `ag` via bash |
-| List a directory | `list` | `ls` |
 
 This holds even when a shell one-liner looks faster. It is not a style
 preference: the dedicated tools surface reviewable diffs, respect permissions
@@ -23,20 +22,20 @@ and ignore rules, and fail loudly instead of silently.
 
 Legitimate uses: `git`, `gh`, `make`, test runners, package managers, build
 tools, and service CLIs (`bq`, `gcloud`, `terraform`, `docker`, `kubectl`).
+Passing a commit or PR body on stdin (`git commit -F -`, `gh pr create
+--body-file -`) is fine, as is `python -c` or `jq` to analyse CLI output.
 
 If a command's purpose is to read, search, or modify a file in the workspace,
 it belongs in a tool call instead.
 
 ## Non-reasons for reaching for a script
 
-- **Batching.** Independent tool calls run in parallel in a single message.
-  Several `edit` calls are not slower than one script, and each is reviewable.
-- **Verification.** `edit` already fails when the target string is missing or
-  ambiguous. Hand-rolled `assert old in s` duplicates a guarantee you already
-  have — and omitting it turns a failed match into a silent no-op that reports
-  success.
 - **Momentum.** Having already used a script earlier in the session is not a
   reason to keep using one.
+- **Verification.** `edit` already fails when the target string is missing or
+  ambiguous. A hand-rolled `assert old in s` duplicates that guarantee, and
+  omitting it turns a failed match into a silent no-op that reports success.
+- Batching is not one either: independent tool calls run in parallel.
 
 ## Narrow exceptions
 
@@ -49,12 +48,20 @@ a repo-wide rename, or a codemod. Two conditions:
 
 For anything touching one to three files, use `edit`.
 
+## Side effects
+
+- Reads through `gcloud`, `gh`, `bq` or `terraform plan` are fine when auth is
+  already set up. Ask before anything that mutates remote state, runs a long job
+  against shared data, or restarts a server or process.
+- Never kill a process you did not start.
+- A long or irreversible command that is not obviously correct gets a small test
+  run first.
+
 ## The same principle elsewhere
 
 - Prefer a specialised subagent or skill over ad-hoc exploration when one
   matches the task.
-- Prefer an MCP tool or documented CLI over scraping or hand-rolled HTTP.
-- Prefer the project's own entry points (`make test`, `make lint`) over
+- Prefer the project's own entry points (`make test`, `prek`) over
   reconstructing the underlying command.
 
 When no tool fits, say so and explain what you are doing instead.

@@ -136,6 +136,18 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/tool-use.md"
       - src: opencode/vcs-conventions.md
         dest: "{{ home_dir }}/.config/opencode/vcs-conventions.md"
+      - src: opencode/workflow.md
+        dest: "{{ home_dir }}/.config/opencode/workflow.md"
+      - src: opencode/skills/repo-review/SKILL.md
+        dest: "{{ home_dir }}/.config/opencode/skills/repo-review/SKILL.md"
+      - src: opencode/skills/repo-review/references/criteria.md
+        dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/criteria.md"
+      - src: opencode/skills/repo-review/references/anti-patterns.md
+        dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/anti-patterns.md"
+      - src: opencode/skills/repo-review/references/layouts.md
+        dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/layouts.md"
+      - src: opencode/skills/repo-review/references/report-template.md
+        dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/report-template.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     type: formula
