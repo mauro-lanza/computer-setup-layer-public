@@ -311,6 +311,9 @@ runtimes_tfenv_terraform_version: "1.12.2"
 # Read by templates/opencode.jsonc.j2.
 ai_default_model: "github-copilot/claude-sonnet-5.5"
 
+# Model for opencode's hidden title agent; short generations don't need the default.
+ai_title_model: "github-copilot/claude-haiku-5.5"
+
 # Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
 ai_chat_model: "claude-sonnet-5.5"
 

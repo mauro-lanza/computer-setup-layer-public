@@ -92,7 +92,7 @@ Shell snippets are the one exception to the path: they stay in `files/shell/`
 and take a `.zsh.j2` suffix, because they are globbed rather than looked up.
 
 Values shared across templates live at the bottom of `vars.yml`
-(`ai_default_model`, `ai_chat_model`, `ai_gitlens_model`, `terminal_font_family`).
+(`ai_default_model`, `ai_title_model`, `ai_chat_model`, `ai_gitlens_model`, `terminal_font_family`).
 Anything derivable
 from an existing list is derived in the template instead — e.g.
 `files/shell/20-aliases.zsh.j2` reads the Python version out of

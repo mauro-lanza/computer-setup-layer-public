@@ -37,19 +37,12 @@ pipe, use `workdir`, or use `read`, `glob` and `grep`. `git grep` is allowed.
 If a command's purpose is to read, search, or modify a file in the workspace,
 it belongs in a tool call instead.
 
-## Non-reasons for reaching for a script
-
-- **Momentum.** Having already used a script earlier in the session is not a
-  reason to keep using one.
-- **Verification.** `edit` already fails when the target string is missing or
-  ambiguous. A hand-rolled `assert old in s` duplicates that guarantee, and
-  omitting it turns a failed match into a silent no-op that reports success.
-- Batching is not one either: independent tool calls run in parallel.
-
 ## Narrow exceptions
 
 A script is justified for genuinely mechanical transforms across many files —
-a repo-wide rename, or a codemod. Two conditions:
+a repo-wide rename, or a codemod. Momentum, hand-rolled verification (`edit`
+already fails on a missing or ambiguous match) and batching (tool calls run in
+parallel) are not reasons. Two conditions:
 
 1. Reach for it because of the shape of the work, not the size of one edit.
 2. Show the script, then verify the result with `grep`/`read` rather than
