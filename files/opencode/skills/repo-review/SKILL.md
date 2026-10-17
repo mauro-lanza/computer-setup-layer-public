@@ -34,10 +34,10 @@ If the user gave constraints or non-goals, they override everything below.
    otherwise skip it and say so. Gate failure paths you did not exercise are
    reported as unverified. On a large repo, read the docs and entry points fully,
    sample repeated or generated files, and state the sample.
-3. **Review.** Walk `references/criteria.md`. Trace code; do not trust docs or
-   comments. Read the failure paths.
-4. **Re-verify.** Re-check each finding against the code. Drop what the evidence
-   refutes (expect a good share to). Separate pre-existing from newly introduced.
+3. **Review.** Walk `references/criteria.md`, following the review rules in
+   `workflow.md`.
+4. **Re-verify.** Re-check each finding against the code; expect a good share to
+   fall.
 5. **Report** in the format of `references/report-template.md`. Stop.
 6. **Plan.** For restructures give 2-3 options with a before/after tree, the
    blast radius (references, generated files, CI, docs) and a recommendation.

@@ -38,4 +38,3 @@
   changes, follow-up work, or a link to the issue/ticket.
 - After further commits, refresh the description from the full diff against base,
   not the last commit, and re-check facts (flags, thresholds, behaviour) in code.
-- Chat summaries meant for sharing: a short, broad bullet list, no file-level detail.

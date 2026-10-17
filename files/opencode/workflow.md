@@ -27,3 +27,4 @@
   narrating the exploration.
 - When work is done, say what changed, what was deliberately not touched, and ask
   at most one open question.
+- Chat summaries meant for sharing: a short, broad bullet list, no file-level detail.
