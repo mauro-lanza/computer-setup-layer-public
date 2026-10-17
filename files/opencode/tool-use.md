@@ -25,6 +25,15 @@ tools, and service CLIs (`bq`, `gcloud`, `terraform`, `docker`, `kubectl`).
 Passing a commit or PR body on stdin (`git commit -F -`, `gh pr create
 --body-file -`) is fine, as is `python -c` or `jq` to analyse CLI output.
 
+Do not prefix commands with `cd dir &&`. Pass the `workdir` parameter of the
+shell tool instead.
+
+`Permission denied: shell` does not mean the shell tool is off. Every part of a
+command is checked, including after `|`, `;` and `&&`, and one banned command
+(`cd`, `cat`, `head`, `tail`, `ls`, `tree`, `find`, `fd`, `grep`, `rg`, `sed`,
+`awk`, `bat`) rejects the whole call. Rerun without it: drop the `| head`
+pipe, use `workdir`, or use `read`, `glob` and `grep`. `git grep` is allowed.
+
 If a command's purpose is to read, search, or modify a file in the workspace,
 it belongs in a tool call instead.
 

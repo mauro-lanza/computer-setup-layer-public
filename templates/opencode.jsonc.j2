@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "{{ ai_default_model }}",
+  "update": "notify",
+  "instructions": [
+    "~/.config/opencode/code-style.md",
+    "~/.config/opencode/tool-use.md",
+    "~/.config/opencode/vcs-conventions.md",
+    "~/.config/opencode/workflow.md"
+  ],
+{% if 'codanna' in computer_setup_active_capabilities %}
+  "mcp": {
+    "servers": {
+      "codanna": {
+        "type": "local",
+        "command": ["codanna", "--config", ".codanna/settings.toml", "serve", "--watch"]
+      }
+    }
+  },
+{% endif %}
+  "permissions": [
+    { "action": "shell", "resource": "*", "effect": "ask" },
+    { "action": "external_directory", "resource": "*", "effect": "ask" },
+
+    { "action": "shell", "resource": "echo *", "effect": "allow" },
+    { "action": "shell", "resource": "pwd *", "effect": "allow" },
+    { "action": "shell", "resource": "wc *", "effect": "allow" },
+    { "action": "shell", "resource": "tr *", "effect": "allow" },
+    { "action": "shell", "resource": "cut *", "effect": "allow" },
+    { "action": "shell", "resource": "which *", "effect": "allow" },
+    { "action": "shell", "resource": "basename *", "effect": "allow" },
+    { "action": "shell", "resource": "dirname *", "effect": "allow" },
+    { "action": "shell", "resource": "stat *", "effect": "allow" },
+    { "action": "shell", "resource": "file *", "effect": "allow" },
+    { "action": "shell", "resource": "du *", "effect": "allow" },
+    { "action": "shell", "resource": "df *", "effect": "allow" },
+    { "action": "shell", "resource": "sleep *", "effect": "allow" },
+    { "action": "shell", "resource": "diff *", "effect": "allow" },
+    { "action": "shell", "resource": "date *", "effect": "allow" },
+    { "action": "shell", "resource": "sort *", "effect": "allow" },
+    { "action": "shell", "resource": "terraform fmt *", "effect": "allow" },
+
+    { "action": "shell", "resource": "git status *", "effect": "allow" },
+    { "action": "shell", "resource": "git log *", "effect": "allow" },
+    { "action": "shell", "resource": "git show *", "effect": "allow" },
+    { "action": "shell", "resource": "git diff *", "effect": "allow" },
+    { "action": "shell", "resource": "git ls-files *", "effect": "allow" },
+    { "action": "shell", "resource": "git remote *", "effect": "allow" },
+    { "action": "shell", "resource": "git branch *", "effect": "allow" },
+
+    { "action": "shell", "resource": "gh pr view *", "effect": "allow" },
+    { "action": "shell", "resource": "gh pr list *", "effect": "allow" },
+    { "action": "shell", "resource": "gh pr diff *", "effect": "allow" },
+    { "action": "shell", "resource": "gh pr checks *", "effect": "allow" },
+    { "action": "shell", "resource": "gh pr status *", "effect": "allow" },
+    { "action": "shell", "resource": "gh issue view *", "effect": "allow" },
+    { "action": "shell", "resource": "gh issue list *", "effect": "allow" },
+    { "action": "shell", "resource": "gh run view *", "effect": "allow" },
+    { "action": "shell", "resource": "gh run list *", "effect": "allow" },
+    { "action": "shell", "resource": "gh repo view *", "effect": "allow" },
+
+    { "action": "shell", "resource": "make *", "effect": "allow" },
+    { "action": "shell", "resource": "pytest *", "effect": "allow" },
+    { "action": "shell", "resource": "uv run pytest *", "effect": "allow" },
+    { "action": "shell", "resource": "npm test *", "effect": "allow" },
+    { "action": "shell", "resource": "go test *", "effect": "allow" },
+    { "action": "shell", "resource": "cargo test *", "effect": "allow" },
+
+    { "action": "shell", "resource": "date *-s*", "effect": "deny" },
+    { "action": "shell", "resource": "date *--set*", "effect": "deny" },
+    { "action": "shell", "resource": "sort *-o*", "effect": "deny" },
+    { "action": "shell", "resource": "sort *-S*", "effect": "deny" },
+    { "action": "shell", "resource": "git log *--output*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *-d*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *-D*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *-m*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *-M*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *--delete*", "effect": "deny" },
+    { "action": "shell", "resource": "git branch *--force*", "effect": "deny" },
+
+    { "action": "shell", "resource": "cd *", "effect": "deny" },
+    { "action": "shell", "resource": "cat *", "effect": "deny" },
+    { "action": "shell", "resource": "head *", "effect": "deny" },
+    { "action": "shell", "resource": "tail *", "effect": "deny" },
+    { "action": "shell", "resource": "ls *", "effect": "deny" },
+    { "action": "shell", "resource": "tree *", "effect": "deny" },
+    { "action": "shell", "resource": "find *", "effect": "deny" },
+    { "action": "shell", "resource": "fd *", "effect": "deny" },
+    { "action": "shell", "resource": "grep *", "effect": "deny" },
+    { "action": "shell", "resource": "rg *", "effect": "deny" },
+    { "action": "shell", "resource": "sed *", "effect": "deny" },
+    { "action": "shell", "resource": "awk *", "effect": "deny" },
+    { "action": "shell", "resource": "bat *", "effect": "deny" },
+
+    { "action": "shell", "resource": "git grep *", "effect": "allow" }
+  ]
+}

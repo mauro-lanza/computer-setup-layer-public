@@ -17,7 +17,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the `font-meslo-lg-nerd-font` cask is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
 | `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
-| `templates/opencode.json.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
+| `templates/opencode.jsonc.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
 | `files/swiftbar/*` | The menu bar readout and its Terminal action — deployed by the `swiftbar` capability. See below |
 | `scripts/check.sh` | This layer's gate. Runs the menu bar plugin against fixture machine states |
@@ -84,8 +84,8 @@ has happened for real and was silent each time.
 
 A config file lives in `templates/<key>.j2` when it needs a value that is
 decided elsewhere, and in `files/<key>` when it is verbatim content. **The
-lookup key is the same either way** — `src: opencode.json` resolves
-`templates/opencode.json.j2` if it exists, else `files/opencode.json`. Promoting
+lookup key is the same either way** — `src: opencode.jsonc` resolves
+`templates/opencode.jsonc.j2` if it exists, else `files/opencode.jsonc`. Promoting
 a file to a template is a rename; no capability or engine change.
 
 Shell snippets are the one exception to the path: they stay in `files/shell/`
@@ -129,7 +129,6 @@ dependency declaration. Numbers are spaced by 10 to leave room to insert.
 | `40` | `docker` | Guards on `command -v docker` |
 | `50` | `gcloud` | Prepends to PATH |
 | `60` | `nvm` | Prepends to PATH — wins over gcloud deliberately |
-| `70` | `opencode` | Wraps a binary installed by a capability |
 
 Two snippets must never share a prefix: ties are broken alphabetically, which
 makes the order accidental rather than declared.

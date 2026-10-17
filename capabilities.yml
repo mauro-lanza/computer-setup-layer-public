@@ -119,17 +119,20 @@ capabilities:
   - id: opencode
     desc: "OpenCode CLI"
     type: formula
-    packages: anomalyco/tap/opencode
+    packages: anomalyco/tap/opencode-v2
     # Third-party tap: the package cannot be resolved without it.
     tap: anomalyco/tap
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
-    # `instructions` in opencode.json names these by a path relative to the
-    # config file, so they must land in the same directory. Adding an entry
-    # there without adding it here deploys a config that points at a file which
-    # is not present — nothing validates the two lists against each other.
+    # `instructions` in opencode.jsonc names these as ~/.config/opencode/<file>.
+    # Adding an entry there without adding it here deploys a config that points
+    # at a file which is not present — nothing validates the two lists against
+    # each other. The opencode formula conflicts with opencode-v2: uninstall it
+    # first on machines that still have it.
     config:
-      - src: opencode.json
-        dest: "{{ home_dir }}/.config/opencode/opencode.json"
+      - src: opencode.jsonc
+        dest: "{{ home_dir }}/.config/opencode/opencode.jsonc"
+      - src: opencode/cli.json
+        dest: "{{ home_dir }}/.config/opencode/cli.json"
       - src: opencode/code-style.md
         dest: "{{ home_dir }}/.config/opencode/code-style.md"
       - src: opencode/tool-use.md
@@ -217,7 +220,7 @@ capabilities:
     desc: "Codanna (local code intelligence + semantic search MCP server)"
     type: formula
     packages: codanna
-    # Wired into opencode.json's `mcp` block while active — see the
+    # Wired into opencode.jsonc's `mcp` block while active — see the
     # conditional there. Installing this indexes nothing: `codanna-init`
     # adopts a repo, `--all-repos` every declared checkout. Indexes only
     # codanna's 15 parsed languages, so infra/dbt repos gain little.
