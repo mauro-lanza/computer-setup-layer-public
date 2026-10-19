@@ -72,17 +72,18 @@ or deploy triggers, permissions. If it buys nothing, flatten it.
 
 ## 7. Comments and docstrings
 
-- Why, not what. A docstring longer than its function is a smell.
-- No comments in YAML/TOML; use a `description` field if the format has one.
-- No history, changelog, editorialising or review rationale in code.
+Detailed rules: `code-style.md` (global). Minimal fallback if it is absent: comments
+state the why, never history or review rationale; docstrings are one line. YAML and
+config files carry no prose comments.
+
 - Sweep the whole pattern across all files, not just the quoted example.
 
 ## 8. Docs
 
-- Current state only. No history, jargon, filler sections.
-- Rationale in exactly one place; others link to it.
-- A growing doc is deduped and split by topic, not appended to.
-- Consistent terminology; a final consistency pass after any rename.
+Detailed rules: `code-style.md` (global). Minimal fallback if it is absent: docs
+describe the present; rationale lives in one place.
+
+- Consistency pass after any rename, across docs and generated copies.
 
 ## 9. Tooling and gates
 
