@@ -17,7 +17,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the `font-meslo-lg-nerd-font` cask is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
 | `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
-| `templates/opencode.jsonc.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle. Also carries the `mcp.codanna` block, gated on the `codanna` capability being active |
+| `templates/opencode.jsonc.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
 | `files/swiftbar/*` | The menu bar readout and its Terminal action — deployed by the `swiftbar` capability. See below |
 | `scripts/check.sh` | This layer's gate. Runs the menu bar plugin against fixture machine states |

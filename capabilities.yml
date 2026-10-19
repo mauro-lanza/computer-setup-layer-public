@@ -216,18 +216,6 @@ capabilities:
     desc: "Bitmap font conversion tools (bdftopcf, otf2bdf)"
     type: formula
     packages: bdftopcf otf2bdf
-  - id: codanna
-    desc: "Codanna (local code intelligence + semantic search MCP server)"
-    type: formula
-    packages: codanna
-    # Wired into opencode.jsonc's `mcp` block while active — see the
-    # conditional there. Installing this indexes nothing: `codanna-init`
-    # adopts a repo, `--all-repos` every declared checkout. Indexes only
-    # codanna's 15 parsed languages, so infra/dbt repos gain little.
-    config:
-      - src: scripts/codanna-init
-        dest: "{{ home_dir }}/.local/bin/codanna-init"
-        executable: true
 
   # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
   # A collection of standalone tools with no package to install — each is

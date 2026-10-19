@@ -97,11 +97,7 @@ git_global_gitignore_entries:
   - venv/
   - .idea/
   - .vscode/
-  # codanna writes these into every repo it indexes and ignores none of them
-  # itself. Listed unconditionally rather than gated on the `codanna`
-  # capability: core.excludesFile takes a single value, so there is no
-  # capability-owned second ignore file to put them in, and ignoring paths
-  # that are never created costs nothing.
+  # Left from the removed codanna indexer, which wrote these into every repo.
   - .codanna/
   - .codannaignore
   - .fastembed_cache

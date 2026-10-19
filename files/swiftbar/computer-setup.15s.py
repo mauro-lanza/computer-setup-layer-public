@@ -30,7 +30,6 @@ import time
 
 STATE = os.path.expanduser("~/.local/state/computer-setup")
 CLI = os.path.expanduser("~/.local/bin/computer-setup")
-LOG_DIR = os.path.expanduser("~/Library/Logs/computer-setup")
 UPGRADE_COMMAND = os.path.expanduser(
     "~/.local/share/computer-setup/actions/upgrade.command")
 # Past this with no new line, a run with no end marker was killed rather than
