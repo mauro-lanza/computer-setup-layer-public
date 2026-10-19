@@ -98,6 +98,11 @@ def open_in_terminal(label, command_file, **params):
     print("%s | %s %s" % (esc(label), opts, extra))
 
 
+def href(path):
+    """A file:// URL; spaces are encoded because SwiftBar splits params on them."""
+    return "file://" + path.replace(" ", "%20")
+
+
 def open_file(label, path, **params):
     """A menu item that opens a file in whatever macOS uses for it.
 
@@ -105,7 +110,7 @@ def open_file(label, path, **params):
     something that is only being read.
     """
     extra = " ".join("%s=%s" % kv for kv in params.items())
-    print("%s | href=file://%s %s" % (esc(label), path.replace(" ", "%20"), extra))
+    print("%s | href=%s %s" % (esc(label), href(path), extra))
 
 
 def main():
@@ -158,7 +163,7 @@ def main():
             print(":arrow.triangle.2.circlepath: %d%% | sfcolor=blue" % pct)
     elif status is None:
         print(":questionmark.circle: | sfcolor=gray")
-    elif failed or (status or {}).get("result") == "failed":
+    elif failed or status.get("result") == "failed":
         print(":exclamationmark.triangle.fill: | sfcolor=red")
     elif stale:
         print(":clock.badge.exclamationmark: | sfcolor=orange")
@@ -196,8 +201,8 @@ def main():
         if latest_log:
             open_file(label, latest_log, sfimage="clock",
                       tooltip="Open%20this%20run%27s%20log")
-            print("%s · %ss | size=11 color=gray href=file://%s" % (
-                esc(when), status.get("duration_seconds", "?"), latest_log))
+            print("%s · %ss | size=11 color=gray href=%s" % (
+                esc(when), status.get("duration_seconds", "?"), href(latest_log)))
         else:
             print("%s | sfimage=clock" % label)
             print("%s · %ss | size=11 color=gray" % (
@@ -284,8 +289,8 @@ def main():
             # which are kept — so the row stays but stops being a link.
             entry_log = entry.get("log")
             if entry_log and os.path.exists(entry_log):
-                print("--%s | font=Menlo size=11 href=file://%s"
-                      % (label, entry_log.replace(" ", "%20")))
+                print("--%s | font=Menlo size=11 href=%s"
+                      % (label, href(entry_log)))
             else:
                 print("--%s | font=Menlo size=11 color=gray" % label)
 

@@ -15,9 +15,10 @@ echo "  ok  $PLUGIN"
 # $1 the JSON `computer-setup status --json` should return
 # $2 optional progress.jsonl content
 render() {
-    local status_json="$1" progress="${2:-}"
-    local home
-    home="$(mktemp -d)"
+    local status_json="$1" progress="${2:-}" home_name="${3:-home}"
+    local root home
+    root="$(mktemp -d)"
+    home="$root/$home_name"
     mkdir -p "$home/.local/state/computer-setup" "$home/.local/bin" \
              "$home/Library/Logs/computer-setup"
 
@@ -35,7 +36,7 @@ render() {
         > "$home/.local/state/computer-setup/progress.jsonl"
 
     HOME="$home" "$PY" "$PWD/$PLUGIN"
-    rm -rf -- "$home"
+    rm -rf -- "$root"
 }
 
 # A plugin that raises still exits 0 (it renders an error item instead), so the
@@ -121,6 +122,13 @@ out="$(render "$OK_STATUS" '{"schema_version":1,"event":"start","mode":"check","
 refute "an ended run still showed a spinner" "$out" '^:arrow\.triangle\.2\.circlepath'
 expect "actions were not restored after the run ended" "$out" 'param1=apply'
 echo "  ok  end marker respected"
+
+echo "==> A HOME containing a space"
+out="$(render "$OK_STATUS" "" "my home")"
+refute "the plugin raised" "$out" 'plugin error|Traceback'
+expect "log href is not space-encoded" "$out" 'href=file://[^ ]*/my%20home/Library/Logs/'
+refute "an href carries a raw space" "$out" 'href=file://[^ ]*/my home/'
+echo "  ok  hrefs encode spaces"
 
 # The CLI is absent on a machine mid-bootstrap, and broken on one worth looking
 # at. Neither may produce a stack trace in the menu bar.
