@@ -1,16 +1,6 @@
 #!/bin/bash
-# Gate for this layer's only executable content: the SwiftBar plugin.
-#
-# The engine's check.sh cannot do this — it deliberately names no tool, and this
-# plugin is layer data. So the layer carries its own gate.
-#
-# Every path in the plugin goes through os.path.expanduser, which honours $HOME.
-# So a fixture HOME redirects the state directory, the CLI, the log directory
-# and the upgrade action at once, with no test hook in the plugin itself.
-#
-# What this protects: a plugin that raises, or emits the wrong shape, shows
-# SwiftBar's own error glyph and nothing about why. Every failure here has been
-# silent in practice.
+# Gate for the SwiftBar plugin, the layer's only executable content. Fixtures
+# redirect $HOME, which the plugin's expanduser paths honour (see README).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

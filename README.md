@@ -114,7 +114,7 @@ Two things in `vars.yml` worth knowing when editing:
   `zed`) must not be added — adoption can leave no app installed at all.
 - **`files/shell/00-path.zsh.j2`** owns PATH order, and puts `~/.local/bin` ahead of
   `{{ homebrew_prefix }}/bin`. A manually-installed binary there shadows the managed one.
-  It is numbered `00-` because every later snippet probes PATH with `command -v`.
+  It is numbered `00-` so it loads before the snippets that prepend to PATH.
 
 ### mariadb-connector-c
 
@@ -136,13 +136,13 @@ dependency declaration. Numbers are spaced by 10 to leave room to insert.
 
 | Prefix | Snippet | Why here |
 |---|---|---|
-| `00` | `path` | Must run first — everything below probes PATH with `command -v` |
+| `00` | `path` | Owns PATH order; must run first |
 | `10` | `editor` | Needs `code`/`zed` on PATH to resolve `$EDITOR` |
 | `20` | `aliases` | Plain definitions |
 | `30` | `functions` | Plain definitions |
-| `40` | `docker` | Guards on `command -v docker` |
+| `40` | `docker` | Gated on `docker-cli` |
 | `50` | `gcloud` | Prepends to PATH |
-| `60` | `nvm` | Prepends to PATH — wins over gcloud deliberately |
+| `60` | `nvm` | Prepends to PATH |
 
 Two snippets must never share a prefix: ties are broken alphabetically, which
 makes the order accidental rather than declared.

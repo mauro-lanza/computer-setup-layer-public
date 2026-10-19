@@ -73,20 +73,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# GitHub CLI must be authenticated to query PR status. Checked once, up front:
-# under the scheduled agent this is the single most likely reason for a silent
-# no-op, and failing here names the reason instead of reporting "no merged PRs"
-# for every repo in turn.
-#
-# The exit code depends on WHO is asking, and the distinction is not cosmetic.
-# `gh` keeps its token in the login keychain, and a LaunchAgent that fires on a
-# machine which has just woken cannot always read it. That is a precondition
-# not being met, not a fault — the same judgement `computer-setup`'s scheduled
-# modes already make about an unreachable repo, where a closed laptop exits 0.
-#
-# Exiting 1 there leaves `launchctl list` showing a permanent failure for a job
-# that is working fine, which trains everyone to ignore the one column that says
-# whether unattended work is happening.
+# Unattended runs exit 0 when gh is unauthenticated (keychain locked), since that is a precondition, not a failure.
 if ! gh auth status &>/dev/null; then
   if [[ -t 2 ]]; then
     echo "Error: GitHub CLI is not authenticated." >&2
@@ -366,15 +353,8 @@ for repo in ${repos[@]+"${repos[@]}"}; do
     *) skipped=$((skipped + 1)); continue ;;
   esac
 
-  # Subshell: `cd` stays local, and a `set -e` abort inside one repo is caught
-  # here rather than ending the run for every repo after it.
-  #
-  # Under --quiet the output is buffered so a repo with nothing to say can be
-  # dropped entirely. A daily run over ~70 checkouts is otherwise ~700 lines of
-  # log in which 95% of repos say "nothing to do" — which is exactly the shape
-  # of log nobody reads, and therefore the shape in which a real warning goes
-  # unnoticed. Buffering is also why --quiet cannot prompt: the prompt would be
-  # captured instead of shown.
+  # Subshell so a `set -e` abort or `cd` stays inside one repo. --quiet buffers
+  # output per repo, which is why it cannot prompt.
   repo_status=0
   if [[ $QUIET -eq 1 ]]; then
     repo_out=$( cd "$repo" && process_repo 2>&1 ) || repo_status=$?
