@@ -1,22 +1,8 @@
 ---
-# Baseline variable values consumed by the orchestrator's roles.
-# These fill the orchestrator's "safe empty" defaults with a shareable baseline.
-# Lists append across layers; scalars are overridden by higher-priority layers.
+# Baseline values for the engine's roles. Lists append across layers; scalars are overridden by higher priority.
 
-# ─── Homebrew baseline (homebrew role) ───────────────────────────────────────
-# Formulae always installed. git/gh/yq/uv are also bootstrap prerequisites
-# (installed in Phase 0); listing them here keeps them under drift management.
-#
-# `ansible` is deliberately ABSENT. The engine runs a pinned ansible-core
-# installed by `uv` into ~/.local/share/computer-setup/runtime, so that an
-# unattended `brew upgrade` cannot move the fleet across an ansible-core major
-# overnight. See runtime.yml in the engine repo. The Homebrew formula was also
-# the 530M community bundle of ~800 collections, of which this playbook uses
-# exactly two — and the one it needs is already installed, pinned, from
-# requirements.yml.
-#
-# Nothing puts that runtime on PATH: it is the engine's private interpreter.
-# Develop against the repo with a project venv, as with any Python project.
+# git/gh/yq/uv are also bootstrap prerequisites; listing them keeps them drift-managed.
+# `ansible` is absent on purpose: the engine runs its own pinned ansible-core.
 homebrew_baseline_formulae:
   - git
   - gh
@@ -34,25 +20,10 @@ homebrew_baseline_formulae:
 # Casks always installed.
 homebrew_baseline_casks:
   - rectangle
-  # Required by the prompt: files/p10k.zsh runs POWERLEVEL9K_MODE=nerdfont-v3
-  # with segment icons enabled, which renders Nerd Font Private Use Area glyphs
-  # (U+F07C folder, U+F1D3 git). Without this cask those show as tofu.
-  #
-  # This was previously listed with a justification that had stopped being true:
-  # the config said `powerline` mode while blanking every icon and separator, so
-  # the prompt rendered zero PUA glyphs and the font was baseline for no reason.
-  # Verify after changing the prompt config with:
-  #   print -rn -- "${(%%)PS1}"   (look for U+E000-U+F8FF)
-  #
-  # Also the integrated-terminal font for both editors (terminal_font_family
-  # below). Meslo LG is Apple's Menlo with disambiguated glyphs and Nerd Font
-  # icons, so it matches the system look. Installing it does NOT select it — set
-  # it as your terminal profile font once.
+  # files/p10k.zsh uses nerdfont-v3 icons; this is also the terminal font (terminal_font_family) and must be selected in your terminal profile once.
   - font-meslo-lg-nerd-font
 
-# Casks safe to `--adopt` when already present in /Applications but not
-# Homebrew-managed. Keep explicit: some casks with protected payloads can fail
-# adoption and remove the existing app.
+# Casks safe to `--adopt`; protected-payload casks can lose the existing app on failure.
 homebrew_adopt_casks:
   - rectangle
   - visual-studio-code
@@ -60,14 +31,9 @@ homebrew_adopt_casks:
   - discord
   - spotify
 
-# ─── Editors ─────────────────────────────────────────────────────────────────
-# Extensions live in the `vscode-extensions` capability in capabilities.yml as a
-# single all-or-nothing group, so bootstrap asks one question instead of one per
-# extension.
+# Extensions live in the `vscode-extensions` capability.
 
-# Editor extension managers. The engine names no editor — it loops over this
-# list, so switching to VSCodium or Cursor, or managing two editors at once, is
-# a change here rather than in engine code.
+# Editor extension managers; the engine names no editor.
 extension_managers:
   - id: vscode
     capability: vscode
@@ -77,10 +43,7 @@ extension_managers:
     settings_key: vscode/settings.json
     settings_dest: "{{ home_dir }}/Library/Application Support/Code/User/settings.json"
 
-# ─── Whole-file shell configs (shell role) ───────────────────────────────────
-# The prompt config sits in a `configs/` subfolder of ~/.zsh: the zshrc snippet
-# glob is non-recursive, so it is neither auto-sourced (it must load after the
-# theme) nor reaped by the snippet manifest (it was never listed in it).
+# The prompt config sits in `configs/` because the zshrc snippet glob is non-recursive (loads after the theme).
 shell_config_files:
   - key: zshrc
     dest: "{{ home_dir }}/.zshrc"
@@ -108,7 +71,6 @@ git_global_gitignore_entries:
   - venv/
   - .idea/
   - .vscode/
-  # Left from the removed codanna indexer, which wrote these into every repo.
   - .codanna/
   - .codannaignore
   - .fastembed_cache
@@ -116,10 +78,7 @@ git_global_gitignore_entries:
 # ─── macOS system defaults (macos role) ──────────────────────────────────────
 # Native YAML types (not strings) for osx_defaults idempotency.
 macos_defaults:
-  # Where SwiftBar looks for plugins. Set declaratively so a fresh machine never
-  # shows the "choose a plugin folder" dialog — an interactive prompt during an
-  # unattended setup is a setup that silently never finishes.
-  # Only meaningful when the `swiftbar` capability is selected; harmless if not.
+  # Preset so a fresh machine never shows SwiftBar's plugin-folder dialog.
   - domain: com.ameba.SwiftBar
     key: PluginDirectory
     type: string
@@ -149,11 +108,7 @@ macos_defaults:
     type: string
     value: "file://{{ home_dir }}/"
     notify: Restart Dock and Finder
-  # Tap to click. `int`, NOT `bool`: macOS itself stores this as an integer, and
-  # osx_defaults refuses to change an existing key's type — declaring bool failed
-  # on a fresh Mac with "Type mismatch. Type in defaults: int". A machine this
-  # playbook has already run on reports `boolean`, but that is the type the
-  # playbook wrote, not the one macOS uses natively. Trust a fresh machine.
+  # `int`, not `bool`: macOS stores it as an integer and osx_defaults refuses to change a key's type.
   - domain: com.apple.AppleMultitouchTrackpad         # Trackpad: tap to click
     key: Clicking
     type: int
@@ -162,10 +117,7 @@ macos_defaults:
     key: Clicking
     type: int
     value: 1
-  # Dragging (move a window by dragging after a tap). Same int-not-bool trap as
-  # Clicking above: verified with `defaults read-type` on a fresh machine, which
-  # reports integer. The old machine reported boolean — but that was this
-  # playbook's own earlier write, not macOS's native type.
+  # Also `int`, not `bool`.
   - domain: com.apple.AppleMultitouchTrackpad         # Trackpad: tap-drag
     key: Dragging
     type: int
@@ -176,24 +128,21 @@ macos_defaults:
     value: 1
 
   # ─── Keyboard & text ───
-  # Double-space at the end of a sentence inserting a period. Fights with code
-  # and terminal input, so it stays off.
+  # Double-space period fights with code and terminal input.
   - domain: NSGlobalDomain
     key: NSAutomaticPeriodSubstitutionEnabled
     type: bool
     value: false
 
   # ─── Mouse ───
-  # Magic Mouse: enable the right-hand click region. Default is OneButton, which
-  # leaves the mouse with no context-menu click at all.
+  # Default OneButton leaves no context-menu click.
   - domain: com.apple.driver.AppleBluetoothMultitouch.mouse
     key: MouseButtonMode
     type: string
     value: TwoButton
 
   # ─── Window management ───
-  # macOS built-in tiling is disabled wholesale: Rectangle owns window layout,
-  # and leaving both enabled means edge-drags fire two competing tilers.
+  # Rectangle owns window layout; two tilers would compete.
   - domain: com.apple.WindowManager                   # tile on drag to screen edge
     key: EnableTilingByEdgeDrag
     type: bool
@@ -208,9 +157,7 @@ macos_defaults:
     value: false
 
   # ─── Hot corners ───
-  # Corner actions and their modifier keys are set in pairs. The modifier must be
-  # declared explicitly: leaving it unset makes the corner fire only while a
-  # modifier is held, which reads as "the setting silently did nothing".
+  # Each corner needs its modifier declared, or it fires only while a modifier is held.
   # Action codes: 1 = disabled, 2 = Mission Control, 14 = Quick Note.
   - domain: com.apple.dock                            # top-left: Mission Control
     key: wvous-tl-corner
@@ -222,8 +169,7 @@ macos_defaults:
     type: int
     value: 0
     notify: Restart Dock and Finder
-  # Bottom-right ships as Quick Note (14) and triggers on any stray cursor
-  # overshoot toward the scrollbar. Explicitly disabled.
+  # Quick Note (14) is the default here and fires on cursor overshoot.
   - domain: com.apple.dock                            # bottom-right: disabled
     key: wvous-br-corner
     type: int
@@ -263,19 +209,14 @@ macos_defaults:
     key: IsAnalog
     type: bool
     value: false
-  # Battery percentage is a ByHost preference — it lives in
-  # ~/Library/Preferences/ByHost and a plain `defaults read` cannot see it.
-  # Without `host: currentHost` this silently writes to the wrong plist and the
-  # menu bar never changes.
+  # ByHost preference: without `host: currentHost` it writes the wrong plist.
   - domain: com.apple.controlcenter
     key: BatteryShowPercentage
     type: bool
     value: false
     host: currentHost
 
-# Defaults applied only when the app is actually installed. Pure layer data, so
-# swapping Rectangle for Raycast/Amethyst/AeroSpace is a change here rather than
-# in the orchestrator.
+# Applied only when the app is installed.
 macos_conditional_defaults:
   - app: /Applications/Rectangle.app
     defaults:
@@ -302,20 +243,10 @@ macos_conditional_defaults:
 # It is a choice, so it lives in a layer.
 runtimes_tfenv_terraform_version: "1.12.2"
 
-# Casks needing root are handled by drift-update passing a sudo password through
-# to the homebrew_cask module's SUDO_ASKPASS support, so none need excluding.
-# Set `upgrade_casks_exclude` if you ever want a cask's own updater to own the
-# job entirely.
-
 # ─── Shared values consumed by config TEMPLATES ──────────────────────────────
-# These exist so one decision lives in one place. They are read by this layer's
-# templates/ (rendered late, after the layer merge), NOT by other vars in this
-# file — a layer var cannot reference another layer var (see docs/architecture.md).
-# Anything derivable from a list above is derived in the template instead of
-# being restated here; see files/shell/20-aliases.zsh.j2 for the Python version.
+# Read by this layer's templates, not by other vars (layer vars cannot reference each other).
 
 # Provider-prefixed model id, as opencode expects.
-# Read by templates/opencode.jsonc.j2.
 ai_default_model: "github-copilot/claude-sonnet-5.5"
 
 # Model for opencode's hidden title agent; short generations don't need the default.
@@ -324,30 +255,13 @@ ai_title_model: "github-copilot/claude-haiku-5.5"
 # Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
 ai_chat_model: "claude-sonnet-5.5"
 
-# Font for the integrated terminals. Powerlevel10k runs in `powerline` mode with
-# POWERLEVEL9K_ICON_PADDING=none, which assumes icons occupy exactly ONE cell —
-# so the Mono variant, not the proportional default. Provided by the
-# font-meslo-lg-nerd-font cask above.
-#
-# Read by the vscode and zed settings templates so the two cannot drift; the
-# shell cannot set this, since the font belongs to whatever renders the glyphs.
+# Mono variant: p10k's icon padding assumes one-cell icons. Read by the vscode and zed templates.
 terminal_font_family: "MesloLGS Nerd Font Mono"
 
 # Model id in GitLens' "<vendor>:<model>" form.
 ai_gitlens_model: "copilot:gpt-4.1"
 
-# ─── Scheduled jobs (scheduled_agents role) ──────────────────────────────────
-# Keeps local branches tidy across every checkout without being asked. Gated on
-# `requires_capability`, so removing the check-merged-branches capability
-# removes the agent with it rather than leaving a plist pointing at a script
-# that is no longer deployed.
-#
-# 08:30 is deliberately ahead of the 09:00 upgrade and 10:00 drift agents: it
-# touches only local branches and finishes fast, so it should not queue behind
-# a Homebrew upgrade. --auto-delete is required because a LaunchAgent has no
-# terminal, and without it the script reports and deletes nothing. --quiet drops
-# the repos with nothing to say, which over ~70 checkouts is the difference
-# between a 700-line log and a 100-line one.
+# Needs check-merged-branches; 08:30 runs before the 09:00 upgrade. --auto-delete is required because a LaunchAgent has no terminal.
 scheduled_agents:
   - label: com.computer-setup.branch-cleanup
     program: "{{ home_dir }}/.local/bin/check_merged_branches"
@@ -359,16 +273,11 @@ scheduled_agents:
     minute: 30
     requires_capability: check-merged-branches
 
-# ─── Credentials a person has to obtain ──────────────────────────────────────
-# Replaces the reminder "Run: gcloud auth login (if using GCP)", which printed
-# on every run whether or not it had been done — including on machines that had
-# been signed in for months. This reports only while the credential is actually
-# missing.
+# Reports only while the credential is missing.
 logins:
   - id: gcloud
     desc: "gcloud (Google Cloud SDK)"
     requires_capability: gcloud
-    # No key: gcloud's credential store is SQLite, not JSON, and it holds only
-    # gcloud's own credentials — so the file existing IS the answer.
+    # SQLite store with only gcloud's own credentials: the file existing is the answer.
     detect_file: "{{ home_dir }}/.config/gcloud/credentials.db"
     remedy: "gcloud auth login"

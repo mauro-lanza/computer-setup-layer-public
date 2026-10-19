@@ -1,22 +1,7 @@
 ---
-# Named starting points for bootstrap. A preset is a PURE PREFILL: it seeds the
-# prompts and is never itself recorded, so these can be edited freely without
-# reconfiguring machines that used them. See "Presets" in the engine's
-# docs/architecture.md.
-#
-# Schema per item:
-#   id:            stable token
-#   desc:          label shown in the bootstrap menu
-#   answers:       question id -> answer (see questions.yml)
-#   capabilities:  capability ids pre-selected (see capabilities.yml)
+# A preset is a pure prefill: it seeds the prompts and is never recorded.
 
 presets:
-  # Everything this layer offers except the hardware/hobby and occasional tools —
-  # i.e. the machine as currently run. Deliberately excluded, and reported by
-  # `computer-setup layers lint` so the omission stays a choice rather than an
-  # oversight: bitmap-fonts, eim, kicad, orcaslicer, tio (hardware/3D/PCB),
-  # baobab, ocrmypdf, poppler, tectonic (occasional, install on demand),
-  # mariadb-connector-c (a build dependency, dormant — see the capability note).
   - id: full
     desc: "Full workstation — development, data tooling, and desktop apps"
     answers:
@@ -62,9 +47,6 @@ presets:
       - spotify
       - discord
 
-  # Enough to work in a terminal and clone repositories. Nothing desktop, no
-  # editor beyond whatever is already installed, and no unattended agents —
-  # useful for a VM, a borrowed machine, or a first pass you refine later.
   - id: minimal
     desc: "Minimal — shell, git, and core CLI tools only"
     answers:

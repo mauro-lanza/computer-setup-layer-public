@@ -1,16 +1,7 @@
 ---
-# Capabilities offered by the public layer. Each entry is a selectable
-# capability whose `id` is the selection token; entries merge union-by-id across
-# layers into the bootstrap menu and the engine's capability registry.
-#
-# The schema is defined once, in the engine:
-#   computer-setup/examples/example-layer/capabilities.yml
-# Do not restate it here — that is how the two copies drifted apart before.
-#
-# Adding an item: append below with a unique id. That is the whole change.
+# Schema: computer-setup/examples/example-layer/capabilities.yml
 
 capabilities:
-  # ─── Formulae ─────────────────────────────────────────────────────────────
   - id: nvm
     desc: "Node Version Manager (nvm)"
     type: formula
@@ -20,18 +11,12 @@ capabilities:
     desc: "ansible-lint (required to develop computer-setup itself)"
     type: formula
     packages: ansible-lint
-    # `scripts/check.sh` runs ansible-lint as a gate. Undeclared, it was the one
-    # tool on the machine that nothing installed — so a rebuilt Mac ran the gate
-    # with the linter missing and still exited 0. Adopt it wherever it already
-    # exists so an existing dev machine stays managed without re-selecting.
+    # adopt_if_present keeps an already-provisioned machine managed without re-selecting.
     adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
   - id: shellcheck
     desc: "shellcheck (required to develop computer-setup itself)"
     type: formula
     packages: shellcheck
-    # Same reasoning as ansible-lint above: `scripts/check.sh` runs it as a hard
-    # gate, so a rebuilt Mac without it fails the suite rather than silently
-    # skipping ~1,900 lines of bash.
     adopt_if_present: "{{ homebrew_prefix }}/bin/shellcheck"
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
@@ -42,55 +27,16 @@ capabilities:
     desc: "Docker CLI + Buildx + Compose"
     type: formula
     packages: docker docker-buildx docker-compose
-    # Note: installing the formula gives a CLI that survives Docker Desktop
-    # being closed — required for using Colima as the runtime.
   - id: colima
     desc: "Colima (lightweight Docker runtime)"
     type: formula
     packages: colima
-  # The MySQL/MariaDB C client library — headers and `mysql_config`, no server.
-  #
-  # This replaced `mariadb` (a 251M database SERVER) in session 12. The server
-  # was never wanted as one: it got installed because building `mysqlclient`
-  # from source needs `mysql_config` and the client headers, and that formula
-  # happens to drag them along. Nothing ever ran a database — `brew services`
-  # reported none and there was no process.
-  #
-  # NOT in any preset, because the need is currently dormant: the repo that
-  # pulled it in has `mysqlclient` commented out as unused, and the one project
-  # still speaking MySQL uses `pymysql`, which is pure Python and compiles
-  # nothing. Select it when a build actually asks for it.
-  #
-  # A faster installer does not remove the need. uv resolves the same PyPI
-  # wheels pip does, so a package with no wheel for this platform is still
-  # built from source either way.
-  #
-  # KEG-ONLY, and deliberately left that way: Homebrew does not symlink it
-  # because it conflicts with `mariadb`, so `mysql_config` is NOT on PATH after
-  # installing. That is correct — a build-time dependency has no business on
-  # the interactive PATH. Export it for the one command that needs it:
-  #
-  #   PATH="{{ homebrew_prefix }}/opt/mariadb-connector-c/bin:$PATH" uv sync
-  #
-  # No shell snippet ships for this on purpose: a permanent PATH entry for a
-  # dormant build dependency is exactly the kind of thing that is impossible to
-  # attribute two years later.
+  # Keg-only, so `mysql_config` is not on PATH; see the README for the build recipe.
   - id: mariadb-connector-c
     desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
     type: formula
     packages: mariadb-connector-c
-  # A menu bar readout of this machine's configuration: drift, sync health, and
-  # live progress while a run is happening.
-  #
-  # SwiftBar is a `.app` cask, not a `.pkg` — so no sudo, which means the
-  # unattended upgrade agent can install and update it like anything else. That
-  # is the whole reason this is possible; swiftDialog was ruled out for exactly
-  # the opposite reason.
-  #
-  # The plugin only READS the four JSON files the engine already writes. It
-  # invokes no Ansible on its refresh cycle: a check takes ~17s and the 10:00
-  # agent already runs one. The CLI stays the API — so this survives an engine
-  # change, and anything it can show, `computer-setup` can already tell you.
+  # Menu bar readout; rationale in the README.
   - id: swiftbar
     desc: "SwiftBar menu bar readout of machine configuration"
     type: cask
@@ -99,11 +45,7 @@ capabilities:
       - src: swiftbar/computer-setup.15s.py
         dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
         executable: true
-      # Deployed OUTSIDE the plugin directory on purpose. SwiftBar imports every
-      # file it finds there as a plugin and runs it — so this landed in the menu
-      # bar as a second, broken item, and SwiftBar executed it. Nothing bad
-      # happened only because `computer-setup upgrade` refuses to run without a
-      # TTY. The plugin directory holds plugins and nothing else.
+      # Outside the plugin directory: SwiftBar executes every file in it.
       - src: swiftbar/upgrade.command
         dest: "{{ home_dir }}/.local/share/computer-setup/actions/upgrade.command"
         executable: true
@@ -120,14 +62,9 @@ capabilities:
     desc: "OpenCode CLI"
     type: formula
     packages: anomalyco/tap/opencode-v2
-    # Third-party tap: the package cannot be resolved without it.
     tap: anomalyco/tap
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
-    # `instructions` in opencode.jsonc names these as ~/.config/opencode/<file>.
-    # Adding an entry there without adding it here deploys a config that points
-    # at a file which is not present — nothing validates the two lists against
-    # each other. The opencode formula conflicts with opencode-v2: uninstall it
-    # first on machines that still have it.
+    # `instructions` in opencode.jsonc and these `config:` entries are coupled; lint checks each src exists, not that the two lists agree.
     config:
       - src: opencode.jsonc
         dest: "{{ home_dir }}/.config/opencode/opencode.jsonc"
@@ -163,10 +100,7 @@ capabilities:
     desc: "Ripgrep (fast search)"
     type: formula
     packages: ripgrep
-    # Adopted when already installed: rg arrives as a dependency of other
-    # formulae, and the VS Code settings template points todo-tree at it only
-    # when this capability is active. Without adoption a machine with a working
-    # rg would have had that setting silently removed.
+    # The VS Code template points todo-tree at rg only while this capability is active.
     adopt_if_present: "{{ homebrew_prefix }}/bin/rg"
   - id: bun
     desc: "Bun (JS runtime & package manager)"
@@ -188,7 +122,6 @@ capabilities:
     desc: "Espressif IDE Manager (ESP-IDF toolchain)"
     type: formula
     packages: espressif/eim/eim
-    # Third-party tap: the package cannot be resolved without it.
     tap: espressif/eim
     adopt_if_present: "{{ homebrew_prefix }}/bin/eim"
   - id: tectonic
@@ -217,11 +150,7 @@ capabilities:
     type: formula
     packages: bdftopcf otf2bdf
 
-  # ─── Personal scripts (~/.local/bin) ───────────────────────────────────────
-  # A collection of standalone tools with no package to install — each is
-  # just a script deployed to ~/.local/bin (already on PATH via path.zsh).
-  # To add another: drop the file in templates/scripts/ (as <name>.j2) or
-  # files/scripts/, and add an entry here with `src: scripts/<name>`.
+  # Scripts deployed to ~/.local/bin from templates/scripts/<name>.j2 or files/scripts/<name>.
   - id: check-merged-branches
     desc: "check_merged_branches (clean up local branches whose PRs already merged)"
     type: feature
@@ -230,15 +159,11 @@ capabilities:
         dest: "{{ home_dir }}/.local/bin/check_merged_branches"
         executable: true
 
-  # ─── Casks ────────────────────────────────────────────────────────────────
   - id: 1password
     desc: "1Password"
     type: cask
     packages: 1password
-    # Stays a REMINDER rather than becoming a checked login: 1Password is a GUI
-    # app whose signed-in state has no on-disk marker readable from here (no
-    # ~/.config/op, no accessible container), so there is nothing to probe. An
-    # unconditional nag is the honest option when detection is impossible.
+    # A reminder, not a login check: 1Password's signed-in state has no readable marker.
     reminders: ["Open 1Password and sign in"]
   - id: vscode
     desc: "Visual Studio Code"
@@ -292,8 +217,7 @@ capabilities:
     desc: "Google Cloud SDK (gcloud CLI)"
     type: cask
     packages: gcloud-cli
-    # Homebrew install location (NOT ~/google-cloud-sdk, which is the deprecated
-    # manual install path). Present ⇒ adopt and keep the gcloud config managed.
+    # Homebrew location, not the deprecated ~/google-cloud-sdk.
     adopt_if_present: "{{ homebrew_prefix }}/share/google-cloud-sdk"
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
@@ -312,23 +236,7 @@ capabilities:
     type: cask
     packages: opencode-desktop
 
-  # ─── VS Code extensions ───────────────────────────────────────────────────
-  # Extensions are configuration, not individually-chosen tools — nobody wants
-  # to answer "Rainbow CSV? [y/N]" on a fresh machine. They ship as ONE
-  # all-or-nothing group so bootstrap asks a single question.
-  #
-  # Adding an extension: append its id to `packages` below. No new capability,
-  # no new prompt.
-  #
-  # Considered and left out (add to `packages` if you want it):
-  #   innoverio.vscode-dbt-power-user   (dbt Power User)
-  #
-  # Machine-specific groups: a higher-priority layer adds its own capability
-  # with a DIFFERENT id (e.g. `vscode-extensions-work` in the work layer). The
-  # engine concatenates the packages of every selected `type: extension`
-  # capability sharing a `manager:`, so groups compose. Do NOT reuse the id
-  # below in another layer — capabilities merge by id, and the higher-priority
-  # one would replace this list wholesale rather than extend it.
+  # One all-or-nothing group. Other layers add their own id, never this one: same-id capabilities replace, not extend.
   - id: vscode-extensions
     desc: "VS Code: extension pack (all or nothing)"
     type: extension

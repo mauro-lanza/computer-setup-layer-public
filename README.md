@@ -10,7 +10,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | `layer.yml` | Manifest: `name: public`, `schema_version: 1` |
 | `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/computer-setup/machine.yml` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
-| `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, upgrade policy |
+| `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, scheduled jobs, shared template values |
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
 | `files/shell/*.zsh[.j2]` | Snippets deployed into `~/.zsh/`, sourced by `zshrc` in filename order. A `# cs:requires-capability: <id>` line gates a snippet on a capability |
 | `presets.yml` | Named starting points (`full`, `minimal`) offered before the per-item prompts |
@@ -114,6 +114,19 @@ Two things in `vars.yml` worth knowing when editing:
 - **`files/shell/00-path.zsh.j2`** owns PATH order, and puts `~/.local/bin` ahead of
   `{{ homebrew_prefix }}/bin`. A manually-installed binary there shadows the managed one.
   It is numbered `00-` because every later snippet probes PATH with `command -v`.
+
+### mariadb-connector-c
+
+The `mariadb-connector-c` capability is the MySQL/MariaDB C client library (headers
+and `mysql_config`, no server), in no preset. It is keg-only, so `mysql_config` is
+not on PATH; export it for the one command that builds `mysqlclient` from source:
+
+```bash
+PATH="$(brew --prefix)/opt/mariadb-connector-c/bin:$PATH" uv sync
+```
+
+No shell snippet ships for it: a permanent PATH entry for a build-only dependency
+is impossible to attribute later.
 
 ### Shell snippet numbering
 
