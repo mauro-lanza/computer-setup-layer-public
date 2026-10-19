@@ -55,6 +55,7 @@ Three things about SwiftBar that are not obvious and cost a session each:
   The `.command` file lived there briefly and appeared in the menu bar as a
   second, broken item. It is deployed to `~/.local/share/computer-setup/actions/`
   instead; the plugin directory holds plugins and nothing else.
+- **`check` and `apply` run in the background**, so the menu bar icon becomes a progress indicator. Only `upgrade` opens a terminal, because it prompts and needs sudo.
 
 ### Running the gate
 

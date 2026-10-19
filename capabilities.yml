@@ -45,7 +45,7 @@ capabilities:
       - src: swiftbar/computer-setup.15s.py
         dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
         executable: true
-      # Outside the plugin directory: SwiftBar executes every file in it.
+      # Outside the plugin directory, which SwiftBar executes in full; see README.
       - src: swiftbar/upgrade.command
         dest: "{{ home_dir }}/.local/share/computer-setup/actions/upgrade.command"
         executable: true

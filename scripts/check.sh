@@ -79,8 +79,7 @@ expect "no separator"  "$out" '^---$'
 echo "  ok  green, renders"
 
 echo "==> Action contract"
-# `shell=` is parsed but undocumented, and `terminal=true` needs an
-# Accessibility grant SwiftBar never requests — it opens an empty window.
+# Why only bash=, href and refresh are allowed: see README.
 refute "an action used shell= instead of bash=" "$out" 'shell='
 refute "an action asked SwiftBar to open a Terminal" "$out" 'terminal=true'
 expect "check does not run in the background" "$out" 'param1=check terminal=false'

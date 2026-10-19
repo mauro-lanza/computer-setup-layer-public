@@ -13,10 +13,7 @@
 # would burn a CPU core and a network round trip every 15 seconds to re-learn
 # something already on disk.
 #
-# Writes happen only when you click. `check` and `apply` run in the BACKGROUND
-# and are watched through the progress indicator; only `upgrade` opens a
-# terminal, because it prompts for confirmation and a sudo password and refuses
-# to run without a TTY.
+# Writes happen only when you click; the action rules are in README.
 #
 # System python3 (/usr/bin/python3, from the Command Line Tools) rather than the
 # engine's pinned interpreter: this must render even when the runtime is broken,
@@ -88,29 +85,14 @@ def esc(text):
 
 
 def action(label, verb, **params):
-    """A menu item that runs `computer-setup <verb>` in the background.
-
-    Background is the right default here, and only became so once progress
-    streaming existed: click, and the menu bar icon turns into a live progress
-    indicator instead of a window appearing.
-
-    Nothing here uses SwiftBar's `terminal=true`. That drives Terminal through
-    AppleScript, and when a Terminal window already exists it sends a ⌘T
-    keystroke via System Events — which needs Accessibility permission SwiftBar
-    never requests. It fails silently after activating Terminal, so a window
-    comes forward showing nothing. See open_in_terminal for the way round it.
-    """
+    """A menu item that runs `computer-setup <verb>` in the background; see README."""
     opts = "bash=%s param1=%s terminal=false refresh=true" % (CLI, verb)
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
 
 
 def open_in_terminal(label, command_file, **params):
-    """A menu item that opens a .command file, which macOS runs in Terminal.
-
-    `open` needs no permission; SwiftBar's own terminal support needs
-    Accessibility. Used only for `upgrade`, which genuinely requires a TTY.
-    """
+    """A menu item that opens a .command file via `open`; see README."""
     opts = "bash=/usr/bin/open param1=%s terminal=false refresh=false" % command_file
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
