@@ -77,6 +77,17 @@ extension_managers:
     settings_key: vscode/settings.json
     settings_dest: "{{ home_dir }}/Library/Application Support/Code/User/settings.json"
 
+# ─── Whole-file shell configs (shell role) ───────────────────────────────────
+# The prompt config sits in a `configs/` subfolder of ~/.zsh: the zshrc snippet
+# glob is non-recursive, so it is neither auto-sourced (it must load after the
+# theme) nor reaped by the snippet manifest (it was never listed in it).
+shell_config_files:
+  - key: zshrc
+    dest: "{{ home_dir }}/.zshrc"
+    backup: true
+  - key: p10k.zsh
+    dest: "{{ home_dir }}/.zsh/configs/p10k.zsh"
+
 # ─── git (git role) ──────────────────────────────────────────────────────────
 git_default_branch: main
 git_config_sections:
