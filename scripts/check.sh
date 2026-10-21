@@ -1,5 +1,6 @@
 #!/bin/bash
-# Gate for the SwiftBar plugin, the layer's only executable content. Fixtures
+# Gate for the SwiftBar plugin and the opencode shell-policy plugin, the layer's
+# executable content. Fixtures
 # redirect $HOME, which the plugin's expanduser paths honour (see README).
 set -euo pipefail
 
@@ -140,6 +141,9 @@ rm -rf -- "$home"
 refute "the plugin raised with no CLI present" "$out" 'plugin error|Traceback'
 expect "no title line without a CLI" "$out" '^:questionmark'
 echo "  ok  renders an unknown state rather than failing"
+
+echo "==> Shell-policy plugin"
+bun test files/opencode/plugins/shell-policy
 
 echo
 echo "Checks passed"

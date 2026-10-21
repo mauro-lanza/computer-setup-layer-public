@@ -40,6 +40,7 @@ correctness for brevity.
 ## Comments and docstrings
 
 - Comment the *why*, never the *what*. If the code already says it, say nothing.
+  No restating types, decorative banners, or changelog and history in comments.
 - Reserve a paragraph for genuinely non-obvious invariants: ordering constraints,
   race conditions, misbehaving APIs, or a deliberate deviation from the obvious
   implementation. Everything else gets one line or none.
@@ -48,7 +49,6 @@ correctness for brevity.
   self-evident. A docstring longer than the function body is a smell.
 - Re-read your own comments before finishing; they come out long. Cut each to the
   why.
-- No restating types, no decorative banners, no changelog or history in comments.
 - A comment that a refactor would silently make wrong should not have been written.
 - Rationale lives in exactly one place. Do not repeat it across code, README and
   design docs.

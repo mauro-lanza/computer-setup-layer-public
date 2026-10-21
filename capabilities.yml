@@ -78,6 +78,10 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/vcs-conventions.md"
       - src: opencode/workflow.md
         dest: "{{ home_dir }}/.config/opencode/workflow.md"
+      - src: opencode/plugins/shell-policy/index.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/index.ts"
+      - src: opencode/plugins/shell-policy/policy.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/policy.ts"
       - src: opencode/skills/repo-review/SKILL.md
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/SKILL.md"
       - src: opencode/skills/repo-review/references/criteria.md

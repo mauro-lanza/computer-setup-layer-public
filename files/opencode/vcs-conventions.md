@@ -4,7 +4,7 @@
 
 - If the repo has its own commit or PR convention (ticket prefix, Conventional
   Commits, PR template), follow it. Check `git log`, the template and the repo's
-  AGENTS.md first. Keep the body short either way.
+  AGENTS.md first.
 
 ## Commit messages
 
@@ -31,9 +31,8 @@
 ## PR descriptions
 
 - Short and direct: what changed, in a few lines. Skip restating the diff,
-  narrating the exploration process, or justifying each decision.
-- No walls of text. If a section would just repeat the commit list or the
-  code itself, omit it.
+  narrating the exploration process, justifying each decision, or repeating the
+  commit list.
 - Only call out context the reviewer cannot get from the diff: breaking
   changes, follow-up work, or a link to the issue/ticket.
 - After further commits, refresh the description from the full diff against base,

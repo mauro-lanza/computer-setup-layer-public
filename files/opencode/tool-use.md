@@ -4,51 +4,40 @@ Use the tool that exists. Do not reimplement it in bash, Python, or Node.
 
 ## File operations
 
-Always use the dedicated tools:
-
-| Task | Use | Never |
+| Task | Use | Not |
 | --- | --- | --- |
-| Read a file or list a directory | `read` (with `offset`/`limit` for ranges) | `cat`, `head`, `tail`, `sed -n`, `awk`, `ls` |
-| Edit a file | `edit` (or `write` to replace wholesale) | `sed -i`, `python - <<'PY'`, `perl -pi` |
+| Read a file or list a directory | `read` (`offset`/`limit` for ranges) | `cat`, `head`, `tail`, `sed -n`, `awk`, `ls` |
+| Edit a file | `edit` (`write` to replace wholesale) | `sed -i`, `perl -pi`, Python heredocs |
 | Create a file | `write` | heredocs, `echo >`, `cat >` |
 | Find files by name | `glob` | `find`, `ls -R` |
-| Search file contents | `grep` | `grep`, `rg`, `ag` via bash |
+| Search file contents | `grep` | `grep`, `rg` via shell |
 
-This holds even when a shell one-liner looks faster. It is not a style
-preference: the dedicated tools surface reviewable diffs, respect permissions
-and ignore rules, and fail loudly instead of silently.
+A shell one-liner looking faster is not a reason: the dedicated tools give
+reviewable diffs, respect permissions and ignore rules, and fail loudly.
 
-## Bash is for running things, not editing them
+## Shell
 
-Legitimate uses: `git`, `gh`, `make`, test runners, package managers, build
-tools, and service CLIs (`bq`, `gcloud`, `terraform`, `docker`, `kubectl`).
-Passing a commit or PR body on stdin (`git commit -F -`, `gh pr create
---body-file -`) is fine, as is `python -c` or `jq` to analyse CLI output.
+Legitimate uses: `git`, `gh`, `make`, test runners, package managers, build tools,
+and service CLIs (`bq`, `gcloud`, `terraform`, `docker`, `kubectl`). Passing a
+commit or PR body on stdin (`git commit -F -`, `gh pr create --body-file -`) is
+fine, as is `python -c` or `jq` to analyse CLI output.
 
-Do not prefix commands with `cd dir &&`. Pass the `workdir` parameter of the
-shell tool instead.
+Set `workdir` instead of prefixing `cd dir &&`.
 
-`Permission denied: shell` does not mean the shell tool is off. Every part of a
-command is checked, including after `|`, `;` and `&&`, and one banned command
-(`cd`, `cat`, `head`, `tail`, `ls`, `tree`, `find`, `fd`, `grep`, `rg`, `sed`,
-`awk`, `bat`) rejects the whole call. Rerun without it: drop the `| head`
-pipe, use `workdir`, or use `read`, `glob` and `grep`. `git grep` is allowed.
+A rejected shell call (`Shell call rejected by policy` or `Permission denied: shell`)
+does not mean the shell tool is off. One banned command anywhere in the call, including after `|`, `;` or `&&`,
+rejects the whole call: `cd`, `cat`, `head`, `tail`, `ls`, `tree`, `find`, `fd`,
+`grep`, `rg`, `sed`, `awk`, `bat` (`git grep` is allowed). Follow the hint in the
+message: drop the `| head`, use `workdir`, or use `read`, `glob` and `grep`.
 
-If a command's purpose is to read, search, or modify a file in the workspace,
-it belongs in a tool call instead.
+## Scripts
 
-## Narrow exceptions
-
-A script is justified for genuinely mechanical transforms across many files —
-a repo-wide rename, or a codemod. Momentum, hand-rolled verification (`edit`
-already fails on a missing or ambiguous match) and batching (tool calls run in
-parallel) are not reasons. Two conditions:
-
-1. Reach for it because of the shape of the work, not the size of one edit.
-2. Show the script, then verify the result with `grep`/`read` rather than
-   trusting the exit code.
-
-For anything touching one to three files, use `edit`.
+A script is justified for a mechanical transform across many files (a repo-wide
+rename, a codemod), because of the shape of the work, not the size of one edit.
+Momentum, hand-rolled verification (`edit` already fails on a missing or ambiguous
+match) and batching (tool calls run in parallel) are not reasons. Show the script,
+then verify the result with `grep`/`read` rather than the exit code. For one to
+three files, use `edit`.
 
 ## Side effects
 
@@ -59,11 +48,8 @@ For anything touching one to three files, use `edit`.
 - A long or irreversible command that is not obviously correct gets a small test
   run first.
 
-## The same principle elsewhere
+## Elsewhere
 
-- Prefer a specialised subagent or skill over ad-hoc exploration when one
-  matches the task.
-- Prefer the project's own entry points (`make test`, `prek`) over
-  reconstructing the underlying command.
-
-When no tool fits, say so and explain what you are doing instead.
+Prefer a specialised subagent or skill over ad-hoc exploration when one matches,
+and the project's own entry points (`make test`, `prek`) over reconstructing the
+command. When no tool fits, say so and explain what you are doing instead.

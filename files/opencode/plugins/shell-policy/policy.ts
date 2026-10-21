@@ -1,0 +1,444 @@
+export interface Word {
+  text: string
+  quoted: boolean
+  dirty: boolean
+}
+
+export interface Stage {
+  words: Word[]
+  redirects: { op: string; target?: Word }[]
+  heredoc?: string
+  pipeIn: boolean
+}
+
+class Unparseable extends Error {}
+
+const REDIRECT_OPS = ["<<<", "<<-", "&>>", "<<", ">>", "&>", ">&", ">|", "<&", ">", "<"]
+const RESERVED = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until", "time", "!", "{", "}"])
+
+// Splits a shell command into simple commands, flattening $(...), backticks, subshells and heredocs.
+// Throws Unparseable on anything it cannot follow with confidence.
+export function parse(source: string): Stage[] {
+  const stages: Stage[] = []
+  let i = 0
+
+  const fail = (reason: string): never => {
+    throw new Unparseable(reason)
+  }
+
+  const list = (end: "" | ")"): void => {
+    let stage: Stage | undefined
+    let word: Word | undefined
+    let redirectOp: string | undefined
+    let pipeNext = false
+    const heredocs: { delim: string; strip: boolean; stage: Stage }[] = []
+
+    const current = (): Stage => {
+      if (!stage) {
+        stage = { words: [], redirects: [], pipeIn: pipeNext }
+        pipeNext = false
+        stages.push(stage)
+      }
+      return stage
+    }
+    const append = (text: string, opts: { quoted?: boolean; dirty?: boolean } = {}) => {
+      word ??= { text: "", quoted: false, dirty: false }
+      word.text += text
+      word.quoted ||= opts.quoted ?? false
+      word.dirty ||= opts.dirty ?? false
+    }
+    const endWord = () => {
+      if (!word) return
+      const done = word
+      word = undefined
+      const target = current()
+      if (redirectOp !== undefined) {
+        target.redirects.push({ op: redirectOp, target: done })
+        redirectOp = undefined
+      } else if (target.words.length === 0 && !done.quoted && RESERVED.has(done.text)) {
+        return
+      } else target.words.push(done)
+    }
+    const endCommand = () => {
+      endWord()
+      if (redirectOp !== undefined) fail("redirect without target")
+      stage = undefined
+    }
+    const readHeredocBodies = () => {
+      for (const h of heredocs.splice(0)) {
+        const lines: string[] = []
+        for (;;) {
+          if (i >= s.length) fail("unterminated heredoc")
+          const eol = s.indexOf("\n", i)
+          const line = s.slice(i, eol < 0 ? s.length : eol)
+          i = eol < 0 ? s.length : eol + 1
+          if ((h.strip ? line.replace(/^\t+/, "") : line) === h.delim) break
+          lines.push(line)
+        }
+        h.stage.heredoc = lines.join("\n")
+      }
+    }
+    const readHeredocDelimiter = (): string => {
+      while (s[i] === " " || s[i] === "\t") i++
+      let delim = ""
+      while (i < s.length && !/[\s;|&<>()]/.test(s[i])) {
+        const c = s[i]
+        if (c === "'" || c === '"') {
+          const close = s.indexOf(c, i + 1)
+          if (close < 0) fail("unterminated quote")
+          delim += s.slice(i + 1, close)
+          i = close + 1
+        } else if (c === "\\") {
+          delim += s[i + 1] ?? ""
+          i += 2
+        } else {
+          delim += c
+          i++
+        }
+      }
+      if (!delim) fail("heredoc without delimiter")
+      return delim
+    }
+    // Appends a $(...) at s[i]; a bare `cat <<EOF` substitution resolves to its body, anything else stays raw and dirty.
+    const substitution = (quoted: boolean) => {
+      const start = i
+      if (s.startsWith("$((", i)) {
+        let depth = 0
+        for (; i < s.length; i++) {
+          if (s[i] === "(") depth++
+          else if (s[i] === ")" && --depth === 0) break
+        }
+        if (i >= s.length) fail("unterminated arithmetic")
+        i++
+        append(s.slice(start, i), { quoted, dirty: true })
+        return
+      }
+      i += 2
+      const first = stages.length
+      list(")")
+      const inner = stages.slice(first)
+      const only = inner.length === 1 ? inner[0] : undefined
+      if (only && commandName(only) === "cat" && only.words.length === 1 && only.heredoc !== undefined) {
+        append(only.heredoc.replace(/\n+$/, ""), { quoted })
+      } else append(s.slice(start, i), { quoted, dirty: true })
+    }
+    const backticks = (quoted: boolean) => {
+      let close = i + 1
+      while (close < s.length && s[close] !== "`") close += s[close] === "\\" ? 2 : 1
+      if (close >= s.length) fail("unterminated backtick")
+      stages.push(...parse(s.slice(i + 1, close)))
+      append(s.slice(i, close + 1), { quoted, dirty: true })
+      i = close + 1
+    }
+
+    while (i < s.length) {
+      const c = s[i]
+      if (c === " " || c === "\t") {
+        endWord()
+        i++
+      } else if (c === "\n") {
+        endCommand()
+        i++
+        readHeredocBodies()
+      } else if (c === "#" && !word) {
+        while (i < s.length && s[i] !== "\n") i++
+      } else if (c === "\\") {
+        if (i + 1 >= s.length) fail("trailing backslash")
+        if (s[i + 1] !== "\n") append(s[i + 1], { quoted: true })
+        i += 2
+      } else if (c === "'") {
+        const close = s.indexOf("'", i + 1)
+        if (close < 0) fail("unterminated quote")
+        append(s.slice(i + 1, close), { quoted: true })
+        i = close + 1
+      } else if (c === '"') {
+        i++
+        append("", { quoted: true })
+        for (;;) {
+          if (i >= s.length) fail("unterminated quote")
+          if (s[i] === '"') break
+          if (s[i] === "\\" && '$"\\`\n'.includes(s[i + 1] ?? "")) {
+            if (s[i + 1] !== "\n") append(s[i + 1], { quoted: true })
+            i += 2
+          } else if (s.startsWith("$(", i)) substitution(true)
+          else if (s[i] === "`") backticks(true)
+          else if (s[i] === "$" && /[A-Za-z_{@*#?!0-9]/.test(s[i + 1] ?? "")) {
+            append("$", { quoted: true, dirty: true })
+            i++
+          } else append(s[i++], { quoted: true })
+        }
+        i++
+      } else if (c === "$" && s.startsWith("$(", i)) {
+        substitution(false)
+      } else if (c === "$" && /[A-Za-z_{@*#?!0-9]/.test(s[i + 1] ?? "")) {
+        append("$", { dirty: true })
+        i++
+      } else if (c === "`") {
+        backticks(false)
+      } else if ((c === "<" || c === ">") && s[i + 1] === "(") {
+        const start = i
+        i += 2
+        list(")")
+        append(s.slice(start, i), { dirty: true })
+      } else if (c === "<" || c === ">" || (c === "&" && s[i + 1] === ">")) {
+        if (word && /^\d+$/.test(word.text) && !word.quoted) word = undefined
+        else endWord()
+        const op = REDIRECT_OPS.find((candidate) => s.startsWith(candidate, i))!
+        i += op.length
+        if (op === "<<" || op === "<<-") {
+          heredocs.push({ delim: readHeredocDelimiter(), strip: op === "<<-", stage: current() })
+        } else redirectOp = op
+      } else if (c === "|" || c === ";" || c === "&") {
+        endCommand()
+        const two = s.slice(i, i + 2)
+        if (two === "|&") {
+          pipeNext = true
+          i += 2
+        } else if (two === "||" || two === "&&" || two === ";;") i += 2
+        else {
+          pipeNext ||= c === "|"
+          i++
+        }
+      } else if (c === "(" && !word) {
+        i++
+        endCommand()
+        list(")")
+      } else if (c === ")") {
+        if (end !== ")") fail("unbalanced paren")
+        endCommand()
+        i++
+        if (heredocs.length) fail("heredoc pending at end of substitution")
+        return
+      } else if (c === "(") {
+        fail("unsupported paren")
+      } else {
+        append(c)
+        i++
+      }
+    }
+    if (end === ")") fail("unterminated substitution")
+    endCommand()
+    if (heredocs.length) fail("unterminated heredoc")
+  }
+
+  const s = source
+  list("")
+  return stages
+}
+
+interface Cmd {
+  name: string
+  args: Word[]
+  stage: Stage
+}
+
+const WRAPPERS = new Set(["command", "builtin", "exec", "sudo", "nohup", "env"])
+const SHELLS = new Set(["sh", "bash", "zsh"])
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/
+
+function commandWords(stage: Stage): Word[] {
+  let words = stage.words
+  for (;;) {
+    const first = words[0]
+    if (first && !first.quoted && ASSIGNMENT.test(first.text)) words = words.slice(1)
+    else if (first && WRAPPERS.has(first.text)) words = words.slice(1)
+    else return words
+  }
+}
+
+function commandName(stage: Stage): string | undefined {
+  return commandWords(stage)[0]?.text.split("/").pop()
+}
+
+interface Options {
+  flags: Map<string, string | true>
+  operands: string[]
+}
+
+// Splits args into flags and operands; valueFlags lists the short flags that take a value, longValue the long ones.
+function options(args: Word[], valueFlags: string, longValue: string[] = []): Options {
+  const flags = new Map<string, string | true>()
+  const operands: string[] = []
+  for (let k = 0; k < args.length; k++) {
+    const arg = args[k].text
+    if (arg === "--") {
+      operands.push(...args.slice(k + 1).map((w) => w.text))
+      break
+    }
+    if (arg.startsWith("--")) {
+      const [name, value] = arg.slice(2).split(/=(.*)/s)
+      if (value !== undefined) flags.set(name, value)
+      else if (longValue.includes(name)) flags.set(name, args[++k]?.text ?? "")
+      else flags.set(name, true)
+    } else if (arg.length > 1 && arg.startsWith("-")) {
+      for (let j = 1; j < arg.length; j++) {
+        const flag = arg[j]
+        if (valueFlags.includes(flag)) {
+          flags.set(flag, arg.slice(j + 1) || args[++k]?.text || "")
+          break
+        }
+        flags.set(flag, true)
+      }
+    } else operands.push(arg)
+  }
+  return { flags, operands }
+}
+
+const MAX_COMMIT_WORDS = 25
+const BODY_OK = /^Body-OK:\s*\S/m
+
+const READ = "use the `read` tool (offset/limit for line ranges)"
+const GLOB = "use the `glob` tool to list or find files"
+const GREP = "use the `grep` tool"
+const EDIT = "use the `edit` tool (or `write` for a whole file)"
+const FILTER =
+  "pipe filters are rejected by the permission rules: drop this stage; long output is truncated automatically and the full text is saved to a file you can `read`"
+const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
+
+const readsStdin = (stage: Stage) =>
+  stage.pipeIn || stage.heredoc !== undefined || stage.redirects.some((r) => r.op === "<<<")
+const readsFileRedirect = (stage: Stage) => stage.redirects.some((r) => r.op === "<")
+
+function headTail({ args, stage, name }: Cmd): string | undefined {
+  const { operands } = options(args, "nc", ["lines", "bytes"])
+  return operands.length || readsFileRedirect(stage) ? `${name} with a file: ${READ}` : FILTER
+}
+
+function grepLike(valueFlags: string, longValue: string[]) {
+  return ({ args, stage }: Cmd) => {
+    const { flags, operands } = options(args, valueFlags, longValue)
+    const hasPattern = ["e", "f", "regexp", "file"].some((k) => flags.has(k))
+    const files = operands.length - (hasPattern ? 0 : 1)
+    const recursive = ["r", "R", "recursive"].some((k) => flags.has(k))
+    if (files > 0 || recursive || readsFileRedirect(stage) || !readsStdin(stage)) return GREP
+    return FILTER
+  }
+}
+
+function sedAwk(valueFlags: string, scriptFlag: string, name: string) {
+  return ({ args }: Cmd) => {
+    const { flags, operands } = options(args, valueFlags)
+    if (flags.has("i") || flags.has("in-place")) return `${name} in place: ${EDIT}`
+    const files = operands.length - (flags.has(scriptFlag) ? 0 : 1)
+    return files > 0 ? `${name} on a file: ${READ}` : FILTER
+  }
+}
+
+const always = (hint: string) => () => hint
+
+const PYTHON_WRITE = /write_text|write_bytes|open\([^)]*,\s*["'][wax]/
+
+const rules: Record<string, (cmd: Cmd) => string | undefined> = {
+  cd: always("use the shell tool's `workdir` parameter instead of `cd`"),
+  cat: ({ args, stage }) => (options(args, "").operands.some((o) => o !== "-") || readsFileRedirect(stage) ? READ : undefined),
+  bat: always(READ),
+  less: always(READ),
+  more: always(READ),
+  ls: always(`${GLOB} (or \`read\` on a directory)`),
+  tree: always(GLOB),
+  find: always(GLOB),
+  fd: always(GLOB),
+  head: headTail,
+  tail: headTail,
+  grep: grepLike("efmABCdD", ["regexp", "file", "max-count", "after-context", "before-context", "context", "include", "exclude"]),
+  egrep: grepLike("efmABCdD", ["regexp", "file", "max-count", "after-context", "before-context", "context"]),
+  fgrep: grepLike("efmABCdD", ["regexp", "file", "max-count", "after-context", "before-context", "context"]),
+  rg: grepLike("efmABCgtTjMrdE", ["regexp", "file", "max-count", "after-context", "before-context", "context", "glob", "type"]),
+  sed: sedAwk("ef", "e", "sed"),
+  awk: sedAwk("fvF", "f", "awk"),
+  perl: ({ args }) => (options(args, "eIMm").flags.has("i") ? `perl -i: ${EDIT}` : undefined),
+}
+
+for (const name of ["python", "python3"]) {
+  rules[name] = ({ args, stage }) => {
+    const inline = options(args, "cmWX").flags.has("c") || args.some((a) => a.text === "-")
+    const body = (stage.heredoc ?? "") + args.map((a) => a.text).join(" ")
+    return inline && PYTHON_WRITE.test(body) ? `inline python that writes files: ${EDIT}` : undefined
+  }
+}
+
+function writesViaRedirect({ name, args, stage }: Cmd): string | undefined {
+  const writes = stage.redirects.some((r) => WRITE_REDIRECTS.has(r.op) && r.target && r.target.text !== "/dev/null")
+  if (["echo", "printf", "cat"].includes(name) && writes) return `${name} redirected into a file: ${EDIT}`
+  if (name === "tee" && options(args, "").operands.length) return `tee to a file: ${EDIT}`
+  return undefined
+}
+
+function commitProblem({ name, args, stage }: Cmd): string | undefined {
+  if (name !== "git") return undefined
+  let sub = -1
+  for (let k = 0; k < args.length; k++) {
+    const arg = args[k].text
+    if (["-C", "-c", "--git-dir", "--work-tree"].includes(arg)) k++
+    else if (!arg.startsWith("-")) {
+      sub = k
+      break
+    }
+  }
+  if (sub < 0 || args[sub].text !== "commit") return undefined
+
+  const messages: Word[] = []
+  const rest = args.slice(sub + 1)
+  for (let k = 0; k < rest.length; k++) {
+    const arg = rest[k].text
+    if (/^-[A-Za-z]*m$/.test(arg) || arg === "--message") messages.push(rest[++k] ?? { text: "", quoted: false, dirty: true })
+    else if (arg.startsWith("--message=")) messages.push({ ...rest[k], text: arg.slice(10) })
+    else if (/^-m./.test(arg)) messages.push({ ...rest[k], text: arg.slice(2) })
+    else if (arg === "-F" || arg === "--file" || arg === "--file=-") {
+      const target = arg === "--file=-" ? "-" : rest[++k]?.text
+      messages.push(
+        target === "-" && stage.heredoc !== undefined
+          ? { text: stage.heredoc, quoted: true, dirty: false }
+          : { text: "", quoted: false, dirty: true },
+      )
+    }
+  }
+  if (messages.length === 0 || messages.some((m) => m.dirty)) return undefined
+
+  const text = messages.map((m) => m.text).join("\n\n")
+  if (BODY_OK.test(text)) return undefined
+  const lines = text.split("\n").filter((l) => l.trim())
+  const words = lines.join(" ").split(/\s+/).length
+  const bullets = lines.filter((l) => /^\s*([-*•]|\d+[.)])\s/.test(l)).length
+  if (lines.length <= 1 && words <= MAX_COMMIT_WORDS && bullets === 0) return undefined
+
+  return (
+    `commit message has ${lines.length} non-empty lines, ${words} words, ${bullets} bullet lines ` +
+    `(limit: 1 line, ${MAX_COMMIT_WORDS} words, no bullets). Use a single -m with one imperative subject line, ` +
+    `e.g. git commit -m "Add retry to upload step", and no body. If a reviewer could not infer something from the diff ` +
+    `(breaking change, non-obvious migration), keep the body and end it with a line "Body-OK: <reason>"`
+  )
+}
+
+function stagesOf(command: string, depth = 0): Stage[] {
+  const stages = parse(command)
+  if (depth >= 2) return stages
+  for (const stage of [...stages]) {
+    const words = commandWords(stage)
+    if (!words[0] || !SHELLS.has(words[0].text)) continue
+    const c = words.findIndex((w) => /^-[a-z]*c$/.test(w.text))
+    if (c >= 0 && words[c + 1]) stages.push(...stagesOf(words[c + 1].text, depth + 1))
+  }
+  return stages
+}
+
+// Returns a message for the model when the command breaks policy, undefined to fall back to the configured rules.
+export function check(command: string): string | undefined {
+  try {
+    const problems: string[] = []
+    for (const stage of stagesOf(command)) {
+      const words = commandWords(stage)
+      const name = commandName(stage)
+      if (!name) continue
+      const cmd: Cmd = { name, args: words.slice(1), stage }
+      const hint = writesViaRedirect(cmd) ?? commitProblem(cmd) ?? rules[name]?.(cmd)
+      if (!hint) continue
+      const shown = words.map((w) => w.text).join(" ").replace(/\s+/g, " ")
+      problems.push(`- \`${shown.length > 70 ? shown.slice(0, 70) + "…" : shown}\`: ${hint}`)
+    }
+    if (!problems.length) return undefined
+    return `Shell call rejected by policy, nothing was run (the shell tool itself is enabled). Fix and resubmit:\n${problems.join("\n")}`
+  } catch {
+    return undefined
+  }
+}
