@@ -31,6 +31,7 @@ export function parse(source: string): Stage[] {
     let word: Word | undefined
     let redirectOp: string | undefined
     let pipeNext = false
+    let functionName = false
     const heredocs: { delim: string; strip: boolean; stage: Stage }[] = []
 
     const current = (): Stage => {
@@ -55,6 +56,12 @@ export function parse(source: string): Stage[] {
       if (redirectOp !== undefined) {
         target.redirects.push({ op: redirectOp, target: done })
         redirectOp = undefined
+      } else if (target.words.length === 0 && !done.quoted && done.text === "function") {
+        functionName = true
+        return
+      } else if (functionName) {
+        functionName = false
+        return
       } else if (target.words.length === 0 && !done.quoted && RESERVED.has(done.text)) {
         return
       } else target.words.push(done)
@@ -209,6 +216,10 @@ export function parse(source: string): Stage[] {
         i++
         if (heredocs.length) fail("heredoc pending at end of substitution")
         return
+      } else if (c === "(" && /^\(\s*\)/.test(s.slice(i))) {
+        // function definition `name() {`: drop the name; the body is parsed as ordinary commands
+        word = undefined
+        i += s.slice(i).match(/^\(\s*\)/)![0].length
       } else if (c === "(") {
         fail("unsupported paren")
       } else {
@@ -297,6 +308,7 @@ function options(args: Word[], valueFlags: string, longValue: string[] = []): Op
 
 const MAX_COMMIT_WORDS = 25
 const BODY_OK = /^Body-OK:\s*\S/m
+const FILE_MESSAGE = /^\$\(\s*cat\s+([^\s<)'"$`][^\s)]*)\s*\)$/
 
 const READ = "use the `read` tool (offset/limit for line ranges)"
 const GLOB = "use the `glob` tool to list or find files"
@@ -409,7 +421,10 @@ function commitProblem({ name, args, stage }: Cmd): string | undefined {
       )
     }
   }
-  if (messages.length === 0 || messages.some((m) => m.dirty)) return undefined
+  if (messages.length === 0) return undefined
+  const fromFile = messages.map((m) => FILE_MESSAGE.exec(m.text.trim())).find(Boolean)
+  if (fromFile) return `commit message read with cat: pass the file directly with \`git commit -F ${fromFile[1]}\``
+  if (messages.some((m) => m.dirty)) return undefined
 
   const text = messages.map((m) => m.text).join("\n\n")
   if (BODY_OK.test(text)) return undefined
