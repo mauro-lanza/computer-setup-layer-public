@@ -232,16 +232,27 @@ interface Cmd {
   stage: Stage
 }
 
-const WRAPPERS = new Set(["command", "builtin", "exec", "sudo", "nohup", "env"])
+const WRAPPERS: Record<string, string> = { command: "", builtin: "", exec: "", nohup: "", sudo: "ugCDhprTU", env: "uCS", xargs: "nIPLdEsa" }
 const SHELLS = new Set(["sh", "bash", "zsh"])
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/
+
+// Drops a wrapper's own flags, skipping the value of those that take one.
+function skipFlags(words: Word[], valueFlags: string): Word[] {
+  let k = 0
+  while (k < words.length && words[k].text.startsWith("-") && words[k].text.length > 1) {
+    const flag = words[k].text
+    k += flag === "--" ? 1 : flag.length === 2 && valueFlags.includes(flag[1]) ? 2 : 1
+    if (flag === "--") break
+  }
+  return words.slice(k)
+}
 
 function commandWords(stage: Stage): Word[] {
   let words = stage.words
   for (;;) {
     const first = words[0]
     if (first && !first.quoted && ASSIGNMENT.test(first.text)) words = words.slice(1)
-    else if (first && WRAPPERS.has(first.text)) words = words.slice(1)
+    else if (first && Object.hasOwn(WRAPPERS, first.text)) words = skipFlags(words.slice(1), WRAPPERS[first.text])
     else return words
   }
 }
@@ -327,6 +338,16 @@ function sedAwk(valueFlags: string, scriptFlag: string, name: string) {
 const always = (hint: string) => () => hint
 
 const PYTHON_WRITE = /write_text|write_bytes|open\([^)]*,\s*["'][wax]/
+const SCRIPT_WRITE = /writeFile|appendFile|createWriteStream|Bun\.write|File\.write|File\.open\([^)]*,\s*["'][wa]/
+
+function inlineWrites(evalFlags: string, valueFlags: string, pattern: RegExp) {
+  return ({ args, stage }: Cmd) => {
+    const flags = options(args, valueFlags).flags
+    const inline = evalFlags.split("").some((f) => flags.has(f)) || args.some((a) => a.text === "-")
+    const body = (stage.heredoc ?? "") + args.map((a) => a.text).join(" ")
+    return inline && pattern.test(body) ? `inline ${evalFlags === "c" ? "python" : "script"} that writes files: ${EDIT}` : undefined
+  }
+}
 
 const rules: Record<string, (cmd: Cmd) => string | undefined> = {
   cd: always("use the shell tool's `workdir` parameter instead of `cd`"),
@@ -349,13 +370,8 @@ const rules: Record<string, (cmd: Cmd) => string | undefined> = {
   perl: ({ args }) => (options(args, "eIMm").flags.has("i") ? `perl -i: ${EDIT}` : undefined),
 }
 
-for (const name of ["python", "python3"]) {
-  rules[name] = ({ args, stage }) => {
-    const inline = options(args, "cmWX").flags.has("c") || args.some((a) => a.text === "-")
-    const body = (stage.heredoc ?? "") + args.map((a) => a.text).join(" ")
-    return inline && PYTHON_WRITE.test(body) ? `inline python that writes files: ${EDIT}` : undefined
-  }
-}
+for (const name of ["python", "python3"]) rules[name] = inlineWrites("c", "cmWX", PYTHON_WRITE)
+for (const name of ["node", "bun", "ruby"]) rules[name] = inlineWrites("ep", "erI", SCRIPT_WRITE)
 
 function writesViaRedirect({ name, args, stage }: Cmd): string | undefined {
   const writes = stage.redirects.some((r) => WRITE_REDIRECTS.has(r.op) && r.target && r.target.text !== "/dev/null")
@@ -415,6 +431,7 @@ function stagesOf(command: string, depth = 0): Stage[] {
   if (depth >= 2) return stages
   for (const stage of [...stages]) {
     const words = commandWords(stage)
+    if (words[0]?.text === "eval") stages.push(...stagesOf(words.slice(1).map((w) => w.text).join(" "), depth + 1))
     if (!words[0] || !SHELLS.has(words[0].text)) continue
     const c = words.findIndex((w) => /^-[a-z]*c$/.test(w.text))
     if (c >= 0 && words[c + 1]) stages.push(...stagesOf(words[c + 1].text, depth + 1))
