@@ -243,7 +243,8 @@ interface Cmd {
   stage: Stage
 }
 
-const WRAPPERS: Record<string, string> = { command: "", builtin: "", exec: "", nohup: "", sudo: "ugCDhprTU", env: "uCS", xargs: "nIPLdEsa" }
+const WRAPPERS: Record<string, string> = { exec: "", nohup: "", time: "", nice: "n", timeout: "ks", sudo: "ugCDhprTU", env: "uCS", xargs: "nIPLdEsa" }
+const LEADING_OPERAND = new Set(["timeout"])
 const SHELLS = new Set(["sh", "bash", "zsh"])
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/
 
@@ -263,10 +264,16 @@ function commandWords(stage: Stage): Word[] {
   for (;;) {
     const first = words[0]
     if (first && !first.quoted && ASSIGNMENT.test(first.text)) words = words.slice(1)
-    else if (first && Object.hasOwn(WRAPPERS, first.text)) words = skipFlags(words.slice(1), WRAPPERS[first.text])
-    else return words
+    else if (first && Object.hasOwn(WRAPPERS, first.text)) {
+      words = skipFlags(words.slice(1), WRAPPERS[first.text])
+      if (LEADING_OPERAND.has(first.text)) words = words.slice(1)
+    } else return words
   }
 }
+
+// xargs feeds the command arguments, not stdin, so a pipe into it is not a pipe filter.
+const viaXargs = (stage: Stage) =>
+  stage.words.slice(0, stage.words.length - commandWords(stage).length).some((w) => w.text === "xargs")
 
 function commandName(stage: Stage): string | undefined {
   return commandWords(stage)[0]?.text.split("/").pop()
@@ -315,11 +322,11 @@ const GLOB = "use the `glob` tool to list or find files"
 const GREP = "use the `grep` tool"
 const EDIT = "use the `edit` tool (or `write` for a whole file)"
 const FILTER =
-  "pipe filters are rejected by the permission rules: drop this stage; long output is truncated automatically and the full text is saved to a file you can `read`"
+  "pipe filters are rejected by policy: drop this stage; long output is truncated automatically and the full text is saved to a file you can `read`"
 const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
 
 const readsStdin = (stage: Stage) =>
-  stage.pipeIn || stage.heredoc !== undefined || stage.redirects.some((r) => r.op === "<<<")
+  (stage.pipeIn && !viaXargs(stage)) || stage.heredoc !== undefined || stage.redirects.some((r) => r.op === "<<<")
 const readsFileRedirect = (stage: Stage) => stage.redirects.some((r) => r.op === "<")
 
 function headTail({ args, stage, name }: Cmd): string | undefined {
@@ -338,11 +345,11 @@ function grepLike(valueFlags: string, longValue: string[]) {
   }
 }
 
-function sedAwk(valueFlags: string, scriptFlag: string, name: string) {
+function sedAwk(valueFlags: string, longValue: string[], scriptFlags: string[], name: string) {
   return ({ args }: Cmd) => {
-    const { flags, operands } = options(args, valueFlags)
+    const { flags, operands } = options(args, valueFlags, longValue)
     if (flags.has("i") || flags.has("in-place")) return `${name} in place: ${EDIT}`
-    const files = operands.length - (flags.has(scriptFlag) ? 0 : 1)
+    const files = operands.length - (scriptFlags.some((k) => flags.has(k)) ? 0 : 1)
     return files > 0 ? `${name} on a file: ${READ}` : FILTER
   }
 }
@@ -355,7 +362,7 @@ const SCRIPT_WRITE = /writeFile|appendFile|createWriteStream|Bun\.write|File\.wr
 function inlineWrites(evalFlags: string, valueFlags: string, pattern: RegExp) {
   return ({ args, stage }: Cmd) => {
     const flags = options(args, valueFlags).flags
-    const inline = evalFlags.split("").some((f) => flags.has(f)) || args.some((a) => a.text === "-")
+    const inline = evalFlags.split("").some((f) => flags.has(f)) || args.some((a) => a.text === "-") || stage.heredoc !== undefined
     const body = (stage.heredoc ?? "") + args.map((a) => a.text).join(" ")
     return inline && pattern.test(body) ? `inline ${evalFlags === "c" ? "python" : "script"} that writes files: ${EDIT}` : undefined
   }
@@ -377,8 +384,8 @@ const rules: Record<string, (cmd: Cmd) => string | undefined> = {
   egrep: grepLike("efmABCdD", ["regexp", "file", "max-count", "after-context", "before-context", "context"]),
   fgrep: grepLike("efmABCdD", ["regexp", "file", "max-count", "after-context", "before-context", "context"]),
   rg: grepLike("efmABCgtTjMrdE", ["regexp", "file", "max-count", "after-context", "before-context", "context", "glob", "type"]),
-  sed: sedAwk("ef", "e", "sed"),
-  awk: sedAwk("fvF", "f", "awk"),
+  sed: sedAwk("ef", ["expression", "file"], ["e", "expression", "f", "file"], "sed"),
+  awk: sedAwk("fvF", ["file", "assign", "field-separator"], ["f", "file"], "awk"),
   perl: ({ args }) => (options(args, "eIMm").flags.has("i") ? `perl -i: ${EDIT}` : undefined),
 }
 
@@ -409,9 +416,10 @@ function commitProblem({ name, args, stage }: Cmd): string | undefined {
   const rest = args.slice(sub + 1)
   for (let k = 0; k < rest.length; k++) {
     const arg = rest[k].text
-    if (/^-[A-Za-z]*m$/.test(arg) || arg === "--message") messages.push(rest[++k] ?? { text: "", quoted: false, dirty: true })
+    const short = /^-[A-Za-z]*m(.*)$/s.exec(arg)
+    if (arg === "--message" || short?.[1] === "") messages.push(rest[++k] ?? { text: "", quoted: false, dirty: true })
     else if (arg.startsWith("--message=")) messages.push({ ...rest[k], text: arg.slice(10) })
-    else if (/^-m./.test(arg)) messages.push({ ...rest[k], text: arg.slice(2) })
+    else if (short) messages.push({ ...rest[k], text: short[1] })
     else if (arg === "-F" || arg === "--file" || arg === "--file=-") {
       const target = arg === "--file=-" ? "-" : rest[++k]?.text
       messages.push(
@@ -469,8 +477,12 @@ export function check(command: string): string | undefined {
       problems.push(`- \`${shown.length > 70 ? shown.slice(0, 70) + "…" : shown}\`: ${hint}`)
     }
     if (!problems.length) return undefined
-    return `Shell call rejected by policy, nothing was run (the shell tool itself is enabled). Fix and resubmit:\n${problems.join("\n")}`
+    const chained = /&&|;|\b(for|while|until)\s/.test(command)
+      ? "\nIf this is a loop or `&&`/`;` chain, run the statements as separate parallel calls."
+      : ""
+    return `Shell call rejected by policy, nothing was run (the shell tool itself is enabled). Fix and resubmit:\n${problems.join("\n")}${chained}`
   } catch {
+    // Fail open: a command we cannot parse (e.g. `case` arms) falls back to the permission globs.
     return undefined
   }
 }

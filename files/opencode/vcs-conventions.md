@@ -13,6 +13,8 @@
 - Only add a body when a commit does something a reviewer could not infer
   from the diff (a breaking change, a non-obvious migration step).
 - Never commit scratch or migration scripts, logs or generated output unless asked.
+- The shell hook enforces at most 25 words, no bullets, and a body only when it
+  ends with a `Body-OK: <reason>` line.
 
 ## Branches
 

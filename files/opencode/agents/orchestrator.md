@@ -5,6 +5,15 @@ permissions:
   - action: shell
     resource: "*"
     effect: deny
+  - action: subagent
+    resource: "*"
+    effect: deny
+  - action: subagent
+    resource: general
+    effect: allow
+  - action: subagent
+    resource: explore
+    effect: allow
   - action: webfetch
     resource: "*"
     effect: deny

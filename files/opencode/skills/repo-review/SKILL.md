@@ -1,6 +1,6 @@
 ---
 name: repo-review
-description: Review, clean up or restructure a repo, folder, file, or a diff (staged, unstaged, branch vs base) for organisation, readability and functional structure. Use when asked to review, simplify, declutter, reorganise, restructure, dedupe, or "clean up" code, docs, config or a PR. Report first, plan second, change only after approval.
+description: Use when asked to review, clean up, simplify, declutter, restructure or dedupe a repo, folder, file or diff. Reports first; changes only after approval.
 ---
 
 # Repo Review
@@ -31,13 +31,11 @@ If the user gave constraints or non-goals, they override everything below.
 2. **Measure.** Count lines, files, references and callers. Find the real
    consumers of anything you might move or delete (`grep`, `git log`). Run the
    repo's gate for a baseline only if it is non-mutating or has a check mode;
-   otherwise skip it and say so. Gate failure paths you did not exercise are
-   reported as unverified. On a large repo, read the docs and entry points fully,
+   otherwise skip it and say so. On a large repo, read the docs and entry points fully,
    sample repeated or generated files, and state the sample.
 3. **Review.** Walk `references/criteria.md`, following the review rules in
    `workflow.md`.
-4. **Re-verify.** Re-check each finding against the code; expect a good share to
-   fall.
+4. **Re-verify** each finding per `workflow.md`.
 5. **Report** in the format of `references/report-template.md`. Stop.
 6. **Plan.** For restructures give 2-3 options with a before/after tree, the
    blast radius (references, generated files, CI, docs) and a recommendation.

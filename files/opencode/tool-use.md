@@ -26,9 +26,9 @@ Set `workdir` instead of prefixing `cd dir &&`.
 
 A rejected shell call (`Shell call rejected by policy` or `Permission denied: shell`)
 does not mean the shell tool is off. One banned command anywhere in the call, including after `|`, `;` or `&&`,
-rejects the whole call: `cd`, `cat`, `head`, `tail`, `ls`, `tree`, `find`, `fd`,
-`grep`, `rg`, `sed`, `awk`, `bat` (`git grep` is allowed). Follow the hint in the
-message: drop the `| head`, use `workdir`, or use `read`, `glob` and `grep`.
+rejects the whole call. Follow the hint in the message. A denial with no hint means
+the command is not allow-listed: switch to `glob`, `grep` or `read` rather than
+rewording the shell command.
 
 ## Scripts
 

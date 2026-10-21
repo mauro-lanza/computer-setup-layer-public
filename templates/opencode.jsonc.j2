@@ -5,6 +5,19 @@
     "title": { "model": "{{ ai_title_model }}" }
   },
   "update": "notify",
+  "default_agent": "orchestrator",
+  "experimental": { "todo": true },
+  "watcher": { "ignore": ["node_modules/**", ".ansible/**", "**/__pycache__/**"] },
+  "commands": {
+    "check": {
+      "description": "Run the repo's check script and report the result",
+      "template": "Run ./scripts/check.sh in the current repo and report the final line, plus any failures with their cause."
+    },
+    "review": {
+      "description": "Review with the repo-review skill",
+      "template": "Use the repo-review skill to review $ARGUMENTS (default: the current repo)."
+    }
+  },
   "instructions": [
     "~/.config/opencode/code-style.md",
     "~/.config/opencode/tool-use.md",
@@ -30,12 +43,19 @@
     { "action": "shell", "resource": "df *", "effect": "allow" },
     { "action": "shell", "resource": "sleep *", "effect": "allow" },
     { "action": "shell", "resource": "diff *", "effect": "allow" },
-    { "action": "shell", "resource": "date *", "effect": "allow" },
+    { "action": "shell", "resource": "date", "effect": "allow" },
+    { "action": "shell", "resource": "date +*", "effect": "allow" },
+    { "action": "shell", "resource": "date -u *", "effect": "allow" },
     { "action": "shell", "resource": "sort *", "effect": "allow" },
     { "action": "shell", "resource": "uniq *", "effect": "allow" },
     { "action": "shell", "resource": "jq *", "effect": "allow" },
     { "action": "shell", "resource": "column *", "effect": "allow" },
     { "action": "shell", "resource": "terraform fmt *", "effect": "allow" },
+    { "action": "shell", "resource": "brew list *", "effect": "allow" },
+    { "action": "shell", "resource": "brew info *", "effect": "allow" },
+    { "action": "shell", "resource": "brew outdated *", "effect": "allow" },
+    { "action": "shell", "resource": "brew uses *", "effect": "allow" },
+    { "action": "shell", "resource": "brew deps *", "effect": "allow" },
 
     { "action": "shell", "resource": "git status *", "effect": "allow" },
     { "action": "shell", "resource": "git log *", "effect": "allow" },
@@ -54,7 +74,6 @@
     { "action": "shell", "resource": "git branch -vv *", "effect": "allow" },
     { "action": "shell", "resource": "git branch --merged *", "effect": "allow" },
     { "action": "shell", "resource": "git grep *", "effect": "allow" },
-    { "action": "shell", "resource": "git branch", "effect": "allow" },
     { "action": "shell", "resource": "git blame *", "effect": "allow" },
     { "action": "shell", "resource": "git cat-file *", "effect": "allow" },
     { "action": "shell", "resource": "git describe *", "effect": "allow" },
@@ -100,15 +119,15 @@
     { "action": "shell", "resource": "ruff check *", "effect": "allow" },
     { "action": "shell", "resource": "terraform validate *", "effect": "allow" },
 
-    { "action": "shell", "resource": "date *-s*", "effect": "deny" },
-    { "action": "shell", "resource": "date *--set*", "effect": "deny" },
     { "action": "shell", "resource": "sort *-o*", "effect": "deny" },
-    { "action": "shell", "resource": "sort *-S*", "effect": "deny" },
     { "action": "shell", "resource": "git log *--output*", "effect": "deny" },
     { "action": "shell", "resource": "git diff *--output*", "effect": "deny" },
     { "action": "shell", "resource": "git show *--output*", "effect": "deny" },
 
     { "action": "shell", "resource": "cd *", "effect": "deny" },
+    { "action": "shell", "resource": "cat *", "effect": "deny" },
+    { "action": "shell", "resource": "less *", "effect": "deny" },
+    { "action": "shell", "resource": "more *", "effect": "deny" },
     { "action": "shell", "resource": "head *", "effect": "deny" },
     { "action": "shell", "resource": "tail *", "effect": "deny" },
     { "action": "shell", "resource": "ls *", "effect": "deny" },
