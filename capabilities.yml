@@ -78,6 +78,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/vcs-conventions.md"
       - src: opencode/workflow.md
         dest: "{{ home_dir }}/.config/opencode/workflow.md"
+      - src: opencode/agents/orchestrator.md
+        dest: "{{ home_dir }}/.config/opencode/agents/orchestrator.md"
       - src: opencode/plugins/shell-policy/index.ts
         dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/index.ts"
       - src: opencode/plugins/shell-policy/policy.ts
