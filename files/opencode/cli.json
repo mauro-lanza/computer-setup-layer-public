@@ -5,5 +5,8 @@
   },
   "prompt": {
     "paste": "full"
+  },
+  "tabs": {
+    "mode": "off"
   }
 }
