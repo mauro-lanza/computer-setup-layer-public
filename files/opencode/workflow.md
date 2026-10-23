@@ -6,11 +6,20 @@
   yet" means no edits.
 - Proceed with the obvious continuation without asking. Ask only before
   destructive, remote-mutating or genuinely ambiguous steps.
+- Non-trivial multi-step work: write a short plan with 3-5 checkable acceptance
+  criteria, get it approved once, then run to completion. Stop only for
+  destructive or remote-mutating steps the plan does not cover, or when a
+  criterion cannot be met. Review once at the end against the criteria.
 - Check what is cheaply checkable before replying. Mark as unverified only claims
   that matter and could not be checked. Say how you measured anything you report
   (benchmarks, counts, timings).
-- Before reporting a blocker, try the authenticated CLIs and APIs available
-  (gcloud, gh, bq, terraform) and say what you tried.
+- Before reporting a blocker, try the authenticated CLIs and APIs available and
+  say what you tried. `services/*.md` records how each service is accessed and
+  checked; use it instead of probing.
+- Investigate everything you can before presenting options or asking which way to
+  go. When alternatives exist, research each and return a recommendation backed
+  by evidence (`path:line`, command output, docs). The user should not need to ask
+  you to investigate further.
 - Read the pinned source or docs before advising on a dependency or module; do
   not answer from memory.
 - Warn before starting an action expected to take more than a few minutes.
