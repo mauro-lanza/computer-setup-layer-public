@@ -321,8 +321,6 @@ const READ = "use the `read` tool (offset/limit for line ranges)"
 const GLOB = "use the `glob` tool to list or find files"
 const GREP = "use the `grep` tool"
 const EDIT = "use the `edit` tool (or `write` for a whole file)"
-const FILTER =
-  "pipe filters are rejected by policy: drop this stage; long output is truncated automatically and the full text is saved to a file you can `read`"
 const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
 
 const readsStdin = (stage: Stage) =>
@@ -331,7 +329,7 @@ const readsFileRedirect = (stage: Stage) => stage.redirects.some((r) => r.op ===
 
 function headTail({ args, stage, name }: Cmd): string | undefined {
   const { operands } = options(args, "nc", ["lines", "bytes"])
-  return operands.length || readsFileRedirect(stage) ? `${name} with a file: ${READ}` : FILTER
+  return operands.length || readsFileRedirect(stage) ? `${name} with a file: ${READ}` : undefined
 }
 
 function grepLike(valueFlags: string, longValue: string[]) {
@@ -341,7 +339,7 @@ function grepLike(valueFlags: string, longValue: string[]) {
     const files = operands.length - (hasPattern ? 0 : 1)
     const recursive = ["r", "R", "recursive"].some((k) => flags.has(k))
     if (files > 0 || recursive || readsFileRedirect(stage) || !readsStdin(stage)) return GREP
-    return FILTER
+    return undefined
   }
 }
 
@@ -350,7 +348,7 @@ function sedAwk(valueFlags: string, longValue: string[], scriptFlags: string[], 
     const { flags, operands } = options(args, valueFlags, longValue)
     if (flags.has("i") || flags.has("in-place")) return `${name} in place: ${EDIT}`
     const files = operands.length - (scriptFlags.some((k) => flags.has(k)) ? 0 : 1)
-    return files > 0 ? `${name} on a file: ${READ}` : FILTER
+    return files > 0 ? `${name} on a file: ${READ}` : undefined
   }
 }
 

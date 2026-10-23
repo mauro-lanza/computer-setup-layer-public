@@ -37,5 +37,7 @@
   commit list.
 - Only call out context the reviewer cannot get from the diff: breaking
   changes, follow-up work, or a link to the issue/ticket.
-- After further commits, refresh the description from the full diff against base,
-  not the last commit, and re-check facts (flags, thresholds, behaviour) in code.
+- After every push to a PR branch, refresh the title and description from the full
+  diff against base, not the last commit, and re-check facts (flags, thresholds,
+  behaviour) in code.
+- Never add `Co-authored-by` trailers.
