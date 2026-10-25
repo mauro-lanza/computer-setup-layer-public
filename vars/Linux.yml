@@ -1,0 +1,31 @@
+---
+# Linux (Arch-based) values, merged after vars.yml on Linux only. Same rules:
+# lists append across layers, scalars are overridden by higher priority.
+
+# ─── Packages (packages role) ────────────────────────────────────────────────
+packages_baseline:
+  pacman:
+    # Bootstrap prerequisites; listed so they stay drift-managed. go-yq is
+    # mikefarah's yq (Arch's `yq` is a different tool).
+    - git
+    - github-cli
+    - go-yq
+    - uv
+    # What zshrc sources, and the font p10k's icons and terminal_font_family assume.
+    - zsh
+    - zsh-theme-powerlevel10k
+    - zsh-autosuggestions
+    - zsh-syntax-highlighting
+    - ttf-meslo-nerd
+
+# ─── Shell (shell role) ──────────────────────────────────────────────────────
+# This layer's zsh setup is the shell; macOS already defaults to zsh.
+shell_login_shell: /usr/bin/zsh
+
+# ─── zsh (read by templates/zshrc.j2) ────────────────────────────────────────
+zsh_theme: /usr/share/zsh-theme-powerlevel10k/powerlevel10k.zsh-theme
+# Sourced in order: autosuggestions first, syntax highlighting LAST. Arch's
+# repos have plain zsh-syntax-highlighting, not the fast variant.
+zsh_plugins:
+  - /usr/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+  - /usr/share/zsh/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh

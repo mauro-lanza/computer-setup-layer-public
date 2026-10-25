@@ -1,7 +1,8 @@
 # Managed by computer-setup (layer: public) — do not edit manually.
-# Powerlevel10k and the zsh plugins are installed as Homebrew formulae and
-# sourced directly below. This file is provided by a content layer; the
-# orchestrator only deploys it and the ~/.zsh snippets it sources.
+# The theme and plugin paths come from this layer's vars/<platform>.yml, so
+# this file names only the ones installed on this machine. This file is
+# provided by a content layer; the orchestrator only deploys it and the ~/.zsh
+# snippets it sources.
 
 # ─── Powerlevel10k instant prompt ─────────────────────────────────────────────
 # Must stay near the top. Any code that needs console input (password prompts,
@@ -52,8 +53,7 @@ done
 unset _cs_snippet
 
 # ─── Powerlevel10k theme ──────────────────────────────────────────────────────
-[[ -r "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme" ]] && \
-  source "{{ homebrew_prefix }}/share/powerlevel10k/powerlevel10k.zsh-theme"
+[[ -r "{{ zsh_theme }}" ]] && source "{{ zsh_theme }}"
 # POWERLEVEL9K_CONFIG_FILE, not just a source line. p10k defaults to
 # `${ZDOTDIR:-~}/.p10k.zsh` and only looks elsewhere when this is set, so
 # without it `p10k configure` writes a fresh config to ~/.p10k.zsh — a file
@@ -61,9 +61,8 @@ unset _cs_snippet
 export POWERLEVEL9K_CONFIG_FILE=~/.zsh/configs/p10k.zsh
 [[ -f "$POWERLEVEL9K_CONFIG_FILE" ]] && source "$POWERLEVEL9K_CONFIG_FILE"
 
-# ─── Plugins (Homebrew) ───────────────────────────────────────────────────────
+# ─── Plugins ──────────────────────────────────────────────────────────────────
 # Order matters: autosuggestions first, syntax highlighting LAST.
-[[ -r "{{ homebrew_prefix }}/share/zsh-autosuggestions/zsh-autosuggestions.zsh" ]] && \
-  source "{{ homebrew_prefix }}/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
-[[ -r "{{ homebrew_prefix }}/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]] && \
-  source "{{ homebrew_prefix }}/opt/zsh-fast-syntax-highlighting/share/zsh-fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
+{% for plugin in zsh_plugins %}
+[[ -r "{{ plugin }}" ]] && source "{{ plugin }}"
+{% endfor %}

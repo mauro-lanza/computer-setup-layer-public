@@ -4,43 +4,43 @@
 capabilities:
   - id: nvm
     desc: "Node Version Manager (nvm)"
-    type: formula
-    packages: nvm
+    packages:
+      brew: nvm
     adopt_if_present: "{{ homebrew_prefix }}/opt/nvm/nvm.sh"
   - id: ansible-lint
     desc: "ansible-lint (required to develop computer-setup itself)"
-    type: formula
-    packages: ansible-lint
+    packages:
+      brew: ansible-lint
     # adopt_if_present keeps an already-provisioned machine managed without re-selecting.
     adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
   - id: shellcheck
     desc: "shellcheck (required to develop computer-setup itself)"
-    type: formula
-    packages: shellcheck
+    packages:
+      brew: shellcheck
     adopt_if_present: "{{ homebrew_prefix }}/bin/shellcheck"
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
-    type: formula
-    packages: tfenv
+    packages:
+      brew: tfenv
     adopt_if_present: "{{ homebrew_prefix }}/bin/tfenv"
   - id: docker-cli
     desc: "Docker CLI + Buildx + Compose"
-    type: formula
-    packages: docker docker-buildx docker-compose
+    packages:
+      brew: docker docker-buildx docker-compose
   - id: colima
     desc: "Colima (lightweight Docker runtime)"
-    type: formula
-    packages: colima
+    packages:
+      brew: colima
   # Keg-only, so `mysql_config` is not on PATH; see the README for the build recipe.
   - id: mariadb-connector-c
     desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
-    type: formula
-    packages: mariadb-connector-c
+    packages:
+      brew: mariadb-connector-c
   # Menu bar readout; rationale in the README.
   - id: swiftbar
     desc: "SwiftBar menu bar readout of machine configuration"
-    type: cask
-    packages: swiftbar
+    packages:
+      cask: swiftbar
     config:
       - src: swiftbar/computer-setup.15s.py
         dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
@@ -49,20 +49,19 @@ capabilities:
       - src: swiftbar/upgrade.command
         dest: "{{ home_dir }}/.local/share/computer-setup/actions/upgrade.command"
         executable: true
-
   - id: fswatch
     desc: "File system watcher (fswatch)"
-    type: formula
-    packages: fswatch
+    packages:
+      brew: fswatch
   - id: terraform-docs
     desc: "Terraform documentation generator"
-    type: formula
-    packages: terraform-docs
+    packages:
+      brew: terraform-docs
   - id: opencode
     desc: "OpenCode CLI"
-    type: formula
-    packages: anomalyco/tap/opencode-v2
-    tap: anomalyco/tap
+    packages:
+      brew: anomalyco/tap/opencode-v2
+      pacman: opencode
     adopt_if_present: "{{ homebrew_prefix }}/bin/opencode"
     # `instructions` in opencode.jsonc and these `config:` entries are coupled; lint checks each src exists, not that the two lists agree.
     config:
@@ -98,189 +97,189 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/report-template.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
-    type: formula
-    packages: act
+    packages:
+      brew: act
   - id: ocrmypdf
     desc: "OCR for PDFs (ocrmypdf)"
-    type: formula
-    packages: ocrmypdf
+    packages:
+      brew: ocrmypdf
   - id: ripgrep
     desc: "Ripgrep (fast search)"
-    type: formula
-    packages: ripgrep
+    packages:
+      brew: ripgrep
     # The VS Code template points todo-tree at rg only while this capability is active.
     adopt_if_present: "{{ homebrew_prefix }}/bin/rg"
   - id: bun
     desc: "Bun (JS runtime & package manager)"
-    type: formula
-    packages: bun
+    packages:
+      brew: bun
   - id: duckdb
     desc: "DuckDB (in-process analytical SQL)"
-    type: formula
-    packages: duckdb
+    packages:
+      brew: duckdb
   - id: tio
     desc: "tio (serial device terminal)"
-    type: formula
-    packages: tio
+    packages:
+      brew: tio
   - id: baobab
     desc: "Baobab (disk usage analyzer)"
-    type: formula
-    packages: baobab
+    packages:
+      brew: baobab
   - id: eim
     desc: "Espressif IDE Manager (ESP-IDF toolchain)"
-    type: formula
-    packages: espressif/eim/eim
-    tap: espressif/eim
+    packages:
+      brew: espressif/eim/eim
     adopt_if_present: "{{ homebrew_prefix }}/bin/eim"
   - id: tectonic
     desc: "Tectonic (self-contained LaTeX engine)"
-    type: formula
-    packages: tectonic
+    packages:
+      brew: tectonic
   - id: gemini-cli
     desc: "Gemini CLI"
-    type: formula
-    packages: gemini-cli
+    packages:
+      brew: gemini-cli
     adopt_if_present: "{{ homebrew_prefix }}/bin/gemini"
   - id: crane
     desc: "crane (container registry / image tool)"
-    type: formula
-    packages: crane
+    packages:
+      brew: crane
   - id: poppler
     desc: "Poppler PDF utilities (pdftotext, pdfimages, ...)"
-    type: formula
-    packages: poppler
+    packages:
+      brew: poppler
   - id: python-311
     desc: "Python 3.11 (pinned interpreter alongside the 3.14 baseline)"
-    type: formula
-    packages: python@3.11
+    packages:
+      brew: python@3.11
   - id: bitmap-fonts
     desc: "Bitmap font conversion tools (bdftopcf, otf2bdf)"
-    type: formula
-    packages: bdftopcf otf2bdf
-
+    packages:
+      brew: bdftopcf otf2bdf
   # Scripts deployed to ~/.local/bin from templates/scripts/<name>.j2 or files/scripts/<name>.
   - id: check-merged-branches
     desc: "check_merged_branches (clean up local branches whose PRs already merged)"
-    type: feature
     config:
       - src: scripts/check_merged_branches
         dest: "{{ home_dir }}/.local/bin/check_merged_branches"
         executable: true
-
   - id: 1password
     desc: "1Password"
-    type: cask
-    packages: 1password
+    packages:
+      cask: 1password
     # A reminder, not a login check: 1Password's signed-in state has no readable marker.
     reminders: ["Open 1Password and sign in"]
   - id: vscode
     desc: "Visual Studio Code"
-    type: cask
-    packages: visual-studio-code
+    packages:
+      cask: visual-studio-code
     adopt_if_present: "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
   - id: firefox
     desc: "Firefox browser"
-    type: cask
-    packages: firefox
+    packages:
+      cask: firefox
   - id: docker-desktop
     desc: "Docker Desktop"
-    type: cask
-    packages: docker-desktop
+    packages:
+      cask: docker-desktop
   - id: stats
     desc: "Stats (system monitor)"
-    type: cask
-    packages: stats
+    packages:
+      cask: stats
   - id: zed
     desc: "Zed editor"
-    type: cask
-    packages: zed
+    packages:
+      cask: zed
     config:
       - src: zed/settings.json
         dest: "{{ home_dir }}/.config/zed/settings.json"
   - id: discord
     desc: "Discord"
-    type: cask
-    packages: discord
+    packages:
+      cask: discord
   - id: spotify
     desc: "Spotify"
-    type: cask
-    packages: spotify
+    packages:
+      cask: spotify
   - id: obsidian
     desc: "Obsidian notes"
-    type: cask
-    packages: obsidian
+    packages:
+      cask: obsidian
   - id: postman
     desc: "Postman API client"
-    type: cask
-    packages: postman
+    packages:
+      cask: postman
   - id: notunes
     desc: "noTunes (prevent Apple Music)"
-    type: cask
-    packages: notunes
+    packages:
+      cask: notunes
   - id: lm-studio
     desc: "LM Studio (local LLMs)"
-    type: cask
-    packages: lm-studio
+    packages:
+      cask: lm-studio
   - id: gcloud
     desc: "Google Cloud SDK (gcloud CLI)"
-    type: cask
-    packages: gcloud-cli
+    packages:
+      cask: gcloud-cli
     # Homebrew location, not the deprecated ~/google-cloud-sdk.
     adopt_if_present: "{{ homebrew_prefix }}/share/google-cloud-sdk"
   - id: orcaslicer
     desc: "OrcaSlicer (3D print slicer)"
-    type: cask
-    packages: orcaslicer
+    packages:
+      cask: orcaslicer
   - id: kicad
     desc: "KiCad (EDA / PCB design)"
-    type: cask
-    packages: kicad
+    packages:
+      cask: kicad
   - id: antigravity
     desc: "Antigravity (Google AI IDE)"
-    type: cask
-    packages: antigravity
+    packages:
+      cask: antigravity
   - id: opencode-desktop
     desc: "OpenCode Desktop (GUI companion to the OpenCode CLI)"
-    type: cask
-    packages: opencode-desktop
-
+    packages:
+      cask: opencode-desktop
   # One all-or-nothing group. Other layers add their own id, never this one: same-id capabilities replace, not extend.
   - id: vscode-extensions
     desc: "VS Code: extension pack (all or nothing)"
-    type: extension
-    manager: vscode
     requires: vscode
-    packages: >-
-      charliermarsh.ruff
-      esbenp.prettier-vscode
-      eamodio.gitlens
-      github.vscode-github-actions
-      github.vscode-pull-request-github
-      ms-python.python
-      ms-python.vscode-pylance
-      hashicorp.terraform
-      redhat.vscode-yaml
-      shinichi-takii.sql-bigquery
-      sqlfluff.vscode-sqlfluff
-      gruntfuggly.todo-tree
-      samuelcolvin.jinjahtml
-      christian-kohler.path-intellisense
-      fill-labs.dependi
-      grapecity.gc-excelviewer
-      mechatroner.rainbow-csv
-      moshfeu.compare-folders
-      ms-toolsai.jupyter
-      ms-toolsai.jupyter-keymap
-      ms-toolsai.jupyter-renderers
-      ms-toolsai.vscode-jupyter-cell-tags
-      ms-toolsai.vscode-jupyter-slideshow
-      pkief.material-icon-theme
-      randomfractalsinc.vscode-data-preview
-      tamasfe.even-better-toml
-      tomoki1207.pdf
-      ms-vscode-remote.remote-containers
-      aaron-bond.better-comments
-      chrmarti.regex
-      dvirtz.parquet-viewer
-      johnpapa.vscode-peacock
-      george-alisson.html-preview-vscode
+    extensions:
+      vscode: >-
+        charliermarsh.ruff
+        esbenp.prettier-vscode
+        eamodio.gitlens
+        github.vscode-github-actions
+        github.vscode-pull-request-github
+        ms-python.python
+        ms-python.vscode-pylance
+        hashicorp.terraform
+        redhat.vscode-yaml
+        shinichi-takii.sql-bigquery
+        sqlfluff.vscode-sqlfluff
+        gruntfuggly.todo-tree
+        samuelcolvin.jinjahtml
+        christian-kohler.path-intellisense
+        fill-labs.dependi
+        grapecity.gc-excelviewer
+        mechatroner.rainbow-csv
+        moshfeu.compare-folders
+        ms-toolsai.jupyter
+        ms-toolsai.jupyter-keymap
+        ms-toolsai.jupyter-renderers
+        ms-toolsai.vscode-jupyter-cell-tags
+        ms-toolsai.vscode-jupyter-slideshow
+        pkief.material-icon-theme
+        randomfractalsinc.vscode-data-preview
+        tamasfe.even-better-toml
+        tomoki1207.pdf
+        ms-vscode-remote.remote-containers
+        aaron-bond.better-comments
+        chrmarti.regex
+        dvirtz.parquet-viewer
+        johnpapa.vscode-peacock
+        george-alisson.html-preview-vscode
+  # Graphical package manager over pacman/AUR/flatpak. In the CachyOS repos;
+  # on plain Arch it is in the AUR (key `aur:`).
+  - id: shelly
+    desc: "Shelly (graphical package manager for Arch)"
+    packages:
+      pacman: shelly

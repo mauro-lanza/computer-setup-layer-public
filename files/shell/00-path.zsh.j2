@@ -1,18 +1,19 @@
 # Managed by computer-setup (layer: public) — do not edit manually
-# PATH extras + Homebrew settings.
+# PATH extras and shell environment.
 #
 # Numbered 00- so PATH is set before any later snippet probes it with
 # `command -v` (10-editor resolves $EDITOR that way).
 #
 # Each iteration PREPENDS, so the resulting order is the REVERSE of the list
-# below: ~/.local/bin, then sbin, then bin. That is deliberate — a binary the
-# user installed in ~/.local/bin shadows the Homebrew-managed one. Do not
-# "fix" the list order.
+# below: ~/.local/bin first, then the platform's entries (zsh_path_prepend in
+# vars/<platform>.yml) in reverse. That is deliberate — a binary the user
+# installed in ~/.local/bin shadows the package-managed one. Do not "fix" the
+# list order.
 #
 # Strips any existing occurrence before prepending, rather than skipping when
 # already present — see findings.md ("path_helper can defeat the PATH
 # snippet's own prepend logic") for why a plain "skip if present" guard fails.
-for _cs_p in {{ homebrew_prefix }}/bin {{ homebrew_prefix }}/sbin "$HOME/.local/bin"; do
+for _cs_p in {% for p in zsh_path_prepend | default([]) %}{{ p }} {% endfor %}"$HOME/.local/bin"; do
   _cs_path=":$PATH:"
   _cs_path="${_cs_path//:$_cs_p:/:}"
   _cs_path="${_cs_path#:}"
@@ -20,6 +21,6 @@ for _cs_p in {{ homebrew_prefix }}/bin {{ homebrew_prefix }}/sbin "$HOME/.local/
   export PATH="$_cs_p:$_cs_path"
 done
 unset _cs_p _cs_path
-
-# Homebrew: disable anonymous analytics collection
-export HOMEBREW_NO_ANALYTICS=1
+{% for name, value in (zsh_env | default({})).items() %}
+export {{ name }}={{ value | quote }}
+{% endfor %}

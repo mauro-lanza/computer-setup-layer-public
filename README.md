@@ -10,11 +10,12 @@ Shareable baseline that any adopter can use as-is or fork.
 | `layer.yml` | Manifest: `name: public`, `schema_version: 1` |
 | `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/computer-setup/machine.yml` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
-| `vars.yml` | Baseline Homebrew formulae/casks + adopt list, git config, macOS `defaults`, scheduled jobs, shared template values |
+| `vars.yml` | What every platform shares: zsh config files, git config, shared template values |
+| `vars/Darwin.yml`, `vars/Linux.yml` | Per-platform values, merged only on that platform: package baselines, zsh paths, macOS `defaults`, scheduled jobs, the login shell. See "Platforms" below |
 | `templates/zshrc.j2` | `~/.zshrc`. The orchestrator ships none of its own — without this file no shell config is deployed at all |
 | `files/shell/*.zsh[.j2]` | Snippets deployed into `~/.zsh/`, sourced by `zshrc` in filename order. A `# cs:requires-capability: <id>` line gates a snippet on a capability |
 | `presets.yml` | Named starting points (`full`, `minimal`) offered before the per-item prompts |
-| `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the `font-meslo-lg-nerd-font` cask is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
+| `files/p10k.zsh` | Powerlevel10k prompt config. Runs in `nerdfont-v3` mode with segment icons on, so the Nerd Font (cask `font-meslo-lg-nerd-font`, pacman `ttf-meslo-nerd`) is a genuine baseline dependency — set MesloLGS NF as the terminal profile font once, or the icons render as tofu |
 | `templates/vscode/settings.json.j2` | VS Code user settings, named by this layer's `extension_managers` entry (`settings_key`) |
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
 | `templates/opencode.jsonc.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |
@@ -96,8 +97,8 @@ Values shared across templates live at the bottom of `vars.yml`
 (`ai_default_model`, `ai_title_model`, `ai_chat_model`, `ai_gitlens_model`, `terminal_font_family`).
 Anything derivable
 from an existing list is derived in the template instead — e.g.
-`files/shell/20-aliases.zsh.j2` reads the Python version out of
-`homebrew_baseline_formulae` rather than restating it.
+`files/shell/20-aliases.zsh.j2` reads the Python version out of the `python@`
+entry in `packages_baseline.brew` rather than restating it.
 
 ## How it's used
 
@@ -107,14 +108,33 @@ machine's layer manifest, not here. See the
 [contract](https://github.com/mauro-lanza/computer-setup/blob/main/docs/architecture.md)
 for the merge rules.
 
-Two things in `vars.yml` worth knowing when editing:
+### Platforms
 
-- **`homebrew_adopt_casks`** is the allow-list of casks safe to `--adopt` when
-  already installed manually. Casks with protected payloads (`docker-desktop`,
-  `zed`) must not be added — adoption can leave no app installed at all.
+`vars.yml` holds what every platform shares (zsh config files, git, templates'
+values). `vars/Darwin.yml` and `vars/Linux.yml` are merged after it, each only on
+its own platform, and hold everything that differs:
+
+| | `vars/Darwin.yml` | `vars/Linux.yml` |
+|---|---|---|
+| Packages | `packages_baseline.brew`/`.cask`, `packages_cask_adopt` | `packages_baseline.pacman` |
+| zsh | `zsh_theme`, `zsh_plugins`, `zsh_path_prepend`, `zsh_env` (Homebrew paths) | `zsh_theme`, `zsh_plugins` (`/usr/share` paths) |
+| Other | `extension_managers` (VS Code), `macos_defaults`, `scheduled_agents` | `shell_login_shell: /usr/bin/zsh` |
+
+So `zshrc.j2` and the snippets carry no platform conditions: they render plain
+values, and each machine gets a file naming only its own paths. A capability
+spans platforms through its `packages:` keys (`opencode` has `brew` and
+`pacman`); one with only `brew`/`cask` keys installs nothing on Linux.
+
+Two things worth knowing when editing:
+
+- **`packages_cask_adopt`** (`vars/Darwin.yml`) is the allow-list of casks safe
+  to `--adopt` when already installed manually. Casks with protected payloads
+  (`docker-desktop`, `zed`) must not be added — adoption can leave no app
+  installed at all.
 - **`files/shell/00-path.zsh.j2`** owns PATH order, and puts `~/.local/bin` ahead of
-  `{{ homebrew_prefix }}/bin`. A manually-installed binary there shadows the managed one.
-  It is numbered `00-` so it loads before the snippets that prepend to PATH.
+  the platform's `zsh_path_prepend` entries. A manually-installed binary there
+  shadows the managed one. It is numbered `00-` so it loads before the snippets
+  that prepend to PATH.
 
 ### mariadb-connector-c
 

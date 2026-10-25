@@ -75,7 +75,7 @@
   # above stay blank deliberately: this keeps the flat, transparent look and
   # avoids the powerline block-arrow style, while still using the font for the
   # one thing it is installed for. Set this back to empty for a text-only prompt
-  # — and then also drop font-meslo-lg-nerd-font from homebrew_baseline_casks,
+  # — and then also drop the Nerd Font from packages_baseline (vars/<platform>.yml),
   # or the cask goes back to being unjustified.
 
   # When set to true, icons appear before content on both sides of the prompt. When set
