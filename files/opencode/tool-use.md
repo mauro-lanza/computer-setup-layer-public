@@ -26,9 +26,15 @@ Set `workdir` instead of prefixing `cd dir &&`.
 
 A rejected shell call (`Shell call rejected by policy` or `Permission denied: shell`)
 does not mean the shell tool is off. One banned command anywhere in the call, including after `|`, `;` or `&&`,
-rejects the whole call. Follow the hint in the message. A denial with no hint means
-the command is not allow-listed: switch to `glob`, `grep` or `read` rather than
-rewording the shell command.
+rejects the whole call. Follow the hint in the message. `Permission denied: shell`
+with no hint is a permission rule, not a policy hint, and rewording the command
+never helps:
+- Orchestrator: its shell is limited to git status/diff --stat/log/add/commit/push,
+  `gh pr view/edit/create` and the service auth checks. Anything else, including
+  `cp`, `mv`, scripts and lint or test runs, goes to a worker with the exact command.
+- Any other agent: the command is not allow-listed. Switch to `glob`, `grep`,
+  `read`, `edit` or `write` if one fits, otherwise tell the user which command
+  needs approval.
 
 ## Scripts
 
