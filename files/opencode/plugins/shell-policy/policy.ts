@@ -9,18 +9,21 @@ export interface Stage {
   redirects: { op: string; target?: Word }[]
   heredoc?: string
   pipeIn: boolean
+  nested: boolean
 }
 
 class Unparseable extends Error {}
 
 const REDIRECT_OPS = ["<<<", "<<-", "&>>", "<<", ">>", "&>", ">&", ">|", "<&", ">", "<"]
-const RESERVED = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until", "time", "!", "{", "}"])
+const RESERVED = new Set(["if", "then", "else", "elif", "fi", "do", "done", "while", "until", "time", "!", "{", "}", "case", "esac"])
 
-// Splits a shell command into simple commands, flattening $(...), backticks, subshells and heredocs.
+// Splits a shell command into simple commands, flattening $(...), backticks, subshells, case arms and heredocs.
 // Throws Unparseable on anything it cannot follow with confidence.
 export function parse(source: string): Stage[] {
   const stages: Stage[] = []
   let i = 0
+  let nest = 0
+  let loops = 0
 
   const fail = (reason: string): never => {
     throw new Unparseable(reason)
@@ -32,11 +35,12 @@ export function parse(source: string): Stage[] {
     let redirectOp: string | undefined
     let pipeNext = false
     let functionName = false
+    const cases: ("head" | "pattern" | "body")[] = []
     const heredocs: { delim: string; strip: boolean; stage: Stage }[] = []
 
     const current = (): Stage => {
       if (!stage) {
-        stage = { words: [], redirects: [], pipeIn: pipeNext }
+        stage = { words: [], redirects: [], pipeIn: pipeNext, nested: false }
         pipeNext = false
         stages.push(stage)
       }
@@ -53,6 +57,10 @@ export function parse(source: string): Stage[] {
       const done = word
       word = undefined
       const target = current()
+      if (cases.at(-1) === "head") {
+        if (done.text === "in") cases[cases.length - 1] = "pattern"
+        return
+      }
       if (redirectOp !== undefined) {
         target.redirects.push({ op: redirectOp, target: done })
         redirectOp = undefined
@@ -63,8 +71,16 @@ export function parse(source: string): Stage[] {
         functionName = false
         return
       } else if (target.words.length === 0 && !done.quoted && RESERVED.has(done.text)) {
+        if (done.text === "do") loops++
+        else if (done.text === "done") loops = Math.max(0, loops - 1)
+        else if (done.text === "case") cases.push("head")
+        else if (done.text === "esac") cases.pop()
         return
-      } else target.words.push(done)
+      } else {
+        // A reserved word shares its stage with the next command, so nesting is set when a word lands.
+        target.nested = nest > 0 || loops > 0
+        target.words.push(done)
+      }
     }
     const endCommand = () => {
       endWord()
@@ -122,7 +138,9 @@ export function parse(source: string): Stage[] {
       }
       i += 2
       const first = stages.length
+      nest++
       list(")")
+      nest--
       const inner = stages.slice(first)
       const only = inner.length === 1 ? inner[0] : undefined
       if (only && commandName(only) === "cat" && only.words.length === 1 && only.heredoc !== undefined) {
@@ -133,14 +151,20 @@ export function parse(source: string): Stage[] {
       let close = i + 1
       while (close < s.length && s[close] !== "`") close += s[close] === "\\" ? 2 : 1
       if (close >= s.length) fail("unterminated backtick")
-      stages.push(...parse(s.slice(i + 1, close)))
+      stages.push(...parse(s.slice(i + 1, close)).map((inner) => ({ ...inner, nested: true })))
       append(s.slice(i, close + 1), { quoted, dirty: true })
       i = close + 1
     }
 
     while (i < s.length) {
       const c = s[i]
-      if (c === " " || c === "\t") {
+      if (cases.at(-1) === "pattern") {
+        // A quoted ")" inside a pattern is cut short here and then fails as an unbalanced paren.
+        const arm = /^[\s;]*(?:(esac)(?=[\s;&|)]|$)|\(?[^)]*\))/.exec(s.slice(i)) ?? fail("unterminated case")
+        i += arm[0].length
+        if (arm[1]) cases.pop()
+        else cases[cases.length - 1] = "body"
+      } else if (c === " " || c === "\t") {
         endWord()
         i++
       } else if (c === "\n") {
@@ -185,7 +209,9 @@ export function parse(source: string): Stage[] {
       } else if ((c === "<" || c === ">") && s[i + 1] === "(") {
         const start = i
         i += 2
+        nest++
         list(")")
+        nest--
         append(s.slice(start, i), { dirty: true })
       } else if (c === "<" || c === ">" || (c === "&" && s[i + 1] === ">")) {
         if (word && /^\d+$/.test(word.text) && !word.quoted) word = undefined
@@ -201,15 +227,21 @@ export function parse(source: string): Stage[] {
         if (two === "|&") {
           pipeNext = true
           i += 2
-        } else if (two === "||" || two === "&&" || two === ";;") i += 2
-        else {
+        } else if (two === "||" || two === "&&") i += 2
+        else if (two === ";;" || two === ";&") {
+          if (cases.at(-1) !== "body") fail("case terminator outside case")
+          cases[cases.length - 1] = "pattern"
+          i += 2
+        } else {
           pipeNext ||= c === "|"
           i++
         }
       } else if (c === "(" && !word) {
         i++
         endCommand()
+        nest++
         list(")")
+        nest--
       } else if (c === ")") {
         if (end !== ")") fail("unbalanced paren")
         endCommand()
@@ -228,6 +260,7 @@ export function parse(source: string): Stage[] {
       }
     }
     if (end === ")") fail("unterminated substitution")
+    if (cases.length) fail("unterminated case")
     endCommand()
     if (heredocs.length) fail("unterminated heredoc")
   }
@@ -243,7 +276,7 @@ interface Cmd {
   stage: Stage
 }
 
-const WRAPPERS: Record<string, string> = { exec: "", nohup: "", time: "", nice: "n", timeout: "ks", sudo: "ugCDhprTU", env: "uCS", xargs: "nIPLdEsa" }
+const WRAPPERS: Record<string, string> = { exec: "", nohup: "", time: "", builtin: "", command: "", nice: "n", timeout: "ks", sudo: "ugCDhprTU", env: "uCS", xargs: "nIPLdEsa" }
 const LEADING_OPERAND = new Set(["timeout"])
 const SHELLS = new Set(["sh", "bash", "zsh"])
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/
@@ -264,6 +297,8 @@ function commandWords(stage: Stage): Word[] {
   for (;;) {
     const first = words[0]
     if (first && !first.quoted && ASSIGNMENT.test(first.text)) words = words.slice(1)
+    // `command -v x` only looks x up
+    else if (first?.text === "command" && /^-p?[vV]/.test(words[1]?.text ?? "")) return words
     else if (first && Object.hasOwn(WRAPPERS, first.text)) {
       words = skipFlags(words.slice(1), WRAPPERS[first.text])
       if (LEADING_OPERAND.has(first.text)) words = words.slice(1)
@@ -321,6 +356,7 @@ const READ = "use the `read` tool (offset/limit for line ranges)"
 const GLOB = "use the `glob` tool to list or find files"
 const GREP = "use the `grep` tool"
 const EDIT = "use the `edit` tool (or `write` for a whole file)"
+const CD = "use the shell tool's `workdir` parameter instead of `cd`"
 const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
 
 const readsStdin = (stage: Stage) =>
@@ -367,14 +403,22 @@ function inlineWrites(evalFlags: string, valueFlags: string, pattern: RegExp) {
 }
 
 const rules: Record<string, (cmd: Cmd) => string | undefined> = {
-  cd: always("use the shell tool's `workdir` parameter instead of `cd`"),
+  cd: ({ stage }) => (stage.nested ? undefined : CD),
   cat: ({ args, stage }) => (options(args, "").operands.some((o) => o !== "-") || readsFileRedirect(stage) ? READ : undefined),
   bat: always(READ),
   less: always(READ),
   more: always(READ),
-  ls: always(`${GLOB} (or \`read\` on a directory)`),
+  ls: ({ args }) => {
+    const { flags } = options(args, "")
+    return flags.has("l") || flags.has("d") ? undefined : `${GLOB} (or \`read\` on a directory)`
+  },
   tree: always(GLOB),
-  find: always(GLOB),
+  find: ({ args }) => {
+    const texts = args.map((a) => a.text)
+    const inspects = texts.some((t) => /^-(newer|newer[acmBt]{2}|mtime|mmin|size|perm|empty)$/.test(t))
+    const acts = texts.some((t) => /^-(exec|execdir|ok|okdir|delete|fprint|fprint0|fprintf|fls)$/.test(t))
+    return inspects && !acts ? undefined : GLOB
+  },
   fd: always(GLOB),
   head: headTail,
   tail: headTail,
@@ -447,7 +491,7 @@ function commitProblem({ name, args, stage }: Cmd): string | undefined {
   )
 }
 
-function stagesOf(command: string, depth = 0): Stage[] {
+function stagesOf(command: string, depth: number): Stage[] {
   const stages = parse(command)
   if (depth >= 2) return stages
   for (const stage of [...stages]) {
@@ -464,7 +508,7 @@ function stagesOf(command: string, depth = 0): Stage[] {
 export function check(command: string): string | undefined {
   try {
     const problems: string[] = []
-    for (const stage of stagesOf(command)) {
+    for (const stage of stagesOf(command, 0)) {
       const words = commandWords(stage)
       const name = commandName(stage)
       if (!name) continue
@@ -472,7 +516,8 @@ export function check(command: string): string | undefined {
       const hint = writesViaRedirect(cmd) ?? commitProblem(cmd) ?? rules[name]?.(cmd)
       if (!hint) continue
       const shown = words.map((w) => w.text).join(" ").replace(/\s+/g, " ")
-      problems.push(`- \`${shown.length > 70 ? shown.slice(0, 70) + "…" : shown}\`: ${hint}`)
+      // Keep the tail too: long commands often differ only in a trailing path.
+      problems.push(`- \`${shown.length > 90 ? `${shown.slice(0, 50)}…${shown.slice(-39)}` : shown}\`: ${hint}`)
     }
     if (!problems.length) return undefined
     const chained = /&&|;|\b(for|while|until)\s/.test(command)
@@ -480,7 +525,7 @@ export function check(command: string): string | undefined {
       : ""
     return `Shell call rejected by policy, nothing was run (the shell tool itself is enabled). Fix and resubmit:\n${problems.join("\n")}${chained}`
   } catch {
-    // Fail open: a command we cannot parse (e.g. `case` arms) falls back to the permission globs.
-    return undefined
+    // Fail open on a command we cannot parse (e.g. a quoted ")" in a case pattern), except a `cd` in command position, which cannot be proven nested.
+    return /(^|[;&|()\n])\s*cd\s/.test(command) ? `Shell call rejected by policy, nothing was run: ${CD}` : undefined
   }
 }
