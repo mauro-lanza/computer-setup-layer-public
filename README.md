@@ -7,7 +7,7 @@ Shareable baseline that any adopter can use as-is or fork.
 
 | File | Purpose |
 |---|---|
-| `layer.yml` | Manifest: `name: public`, `schema_version: 1` |
+| `layer.yml` | Manifest: `name: public`, `schema_version: 2` |
 | `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/computer-setup/machine.yml` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
 | `vars.yml` | What every platform shares: zsh config files, git config, shared template values |
