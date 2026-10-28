@@ -129,7 +129,7 @@ Two things worth knowing when editing:
 
 - **`packages_cask_adopt`** (`vars/Darwin.yml`) is the allow-list of casks safe
   to `--adopt` when already installed manually. Casks with protected payloads
-  (`docker-desktop`, `zed`) must not be added — adoption can leave no app
+  (`zed`) must not be added — adoption can leave no app
   installed at all.
 - **`files/shell/00-path.zsh.j2`** owns PATH order, and puts `~/.local/bin` ahead of
   the platform's `zsh_path_prepend` entries. A manually-installed binary there
@@ -160,7 +160,6 @@ dependency declaration. Numbers are spaced by 10 to leave room to insert.
 | `10` | `editor` | Needs `code`/`zed` on PATH to resolve `$EDITOR` |
 | `20` | `aliases` | Plain definitions |
 | `30` | `functions` | Plain definitions |
-| `40` | `docker` | Gated on `docker-cli` |
 | `50` | `gcloud` | Prepends to PATH |
 | `60` | `nvm` | Prepends to PATH |
 

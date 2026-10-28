@@ -177,10 +177,6 @@ capabilities:
     desc: "Firefox browser"
     packages:
       cask: firefox
-  - id: docker-desktop
-    desc: "Docker Desktop"
-    packages:
-      cask: docker-desktop
   - id: stats
     desc: "Stats (system monitor)"
     packages:

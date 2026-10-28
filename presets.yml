@@ -16,7 +16,6 @@ presets:
       - ansible-lint
       - shellcheck
       - docker-cli
-      - docker-desktop
       - colima
       - fswatch
       - terraform-docs
