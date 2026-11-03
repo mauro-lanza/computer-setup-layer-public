@@ -15,8 +15,10 @@ conventions and recorded decisions override both.
 `<target>` is a path, or a diff scope: `staged`, `unstaged`, `branch` (vs base).
 Default is the whole target.
 
-- **mode:** `review` (steps 1-5, then stop), `plan` (adds step 6, then stop),
-  `apply` (step 7 on an approved plan). Default: `plan`.
+- **mode:** `review` (steps 1-5, then stop), `annotate` (steps 1-4, then write
+  each finding as an inline note in the user's marker style next to the code it
+  concerns, no code changes), `plan` (adds step 6, then stop), `apply` (step 7 on
+  an approved plan). Default: `plan`.
 - **focus:** optional, one or more of `dead-code`, `structure`, `comments`, `docs`,
   `naming`, `tooling`. Default: all, in that priority.
 

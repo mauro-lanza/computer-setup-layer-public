@@ -35,6 +35,10 @@
 - Re-verify findings before fixing them. Drop what the evidence refutes, and
   separate pre-existing issues from newly introduced ones.
 - Say which diff you reviewed: staged, unstaged, or branch against base.
+- When the code is deployed, check its logs and metrics; evidence from real runs
+  outranks reading the code.
+- Reviewing someone else's code: annotate inline in the user's marker style (e.g.
+  `# REVIEW_NOTE:`) and do not change the code itself unless asked.
 
 ## Answers
 

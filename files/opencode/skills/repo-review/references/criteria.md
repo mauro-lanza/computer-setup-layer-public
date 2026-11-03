@@ -45,8 +45,11 @@ or deploy triggers, permissions. If it buys nothing, flatten it.
   only consumer; shared ones in one named place.
 - Root holds only what tooling requires there; governance config (lint, hooks,
   ignore) lives once at the root.
-- Module order: constants, types, private helpers, public entry points. Public
-  surface minimal (`_` prefix unless imported elsewhere).
+- Module order: constants, types, then functions in the order they run, entry
+  point last. Public surface minimal (`_` prefix unless imported elsewhere).
+- The entry point reads as the plan: the steps in order, each a single call.
+- Modules that depend on each other's internals (dict shapes, paths, env vars)
+  belong in one.
 - Acyclic, one-directional imports.
 - Names stable where something outside the repo references them (DAG ids,
   resource addresses, image paths).

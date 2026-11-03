@@ -6,9 +6,17 @@ correctness for brevity.
 ## Structure
 
 - Fewer files and a clean root are the default. A module earns its own file when
-  it has a name you would use in a sentence and more than one or two things in
-  it. Otherwise fold it into its only caller. Merge near-duplicates; extract
+  it owns a concern its callers can use without knowing how it works (a file
+  format, a protocol), or when more than one consumer imports it. Modules that
+  depend on each other's internals (dict shapes, paths, env vars) belong in one.
+  A single-purpose script stays one file: constants and types first, then
+  functions in the order they run, `main` last. Merge near-duplicates; extract
   only what is duplicated across files.
+- The entry point reads as the plan: the steps in order, each a single call. It
+  owns the order; the functions own the details. Pass each function the values it
+  needs, not the whole parsed input.
+- Read env vars and settings once, at the entry point or the top of the file, not
+  at import time across modules.
 - A helper with one call site should be inlined, unless naming it is what makes
   the caller readable.
 - Put a constant next to its only user, not in a shared bucket.
@@ -30,8 +38,17 @@ correctness for brevity.
   point with a single value or single caller. Add it when the second case arrives.
 - Close the interface. Prefer a required argument, a narrow type and no default
   over an optional one with a fallback. Type values as tightly as the data allows.
+- Values passed between functions are typed; dicts only where data is serialised
+  (JSON, API payloads). Return what the caller needs, not an object it has to
+  unpack. Do not mutate arguments.
 - No defensive handling for states that cannot occur. A test environment is not a
-  reason for cleanup, migration or fallback code.
+  reason for cleanup, migration or fallback code. Untrusted input is validated
+  once where it enters (CLI, external data, names that become paths), then
+  trusted.
+- Prefer the standard library over custom machinery, and check its actual
+  behaviour in the source before relying on it.
+- Design for the failures that actually happen (timeouts, kills, retries).
+  Anything that needs manual recovery also needs detection or an alert.
 - Delete dead options, unused fields and superseded approaches outright. Version
   control is the history.
 - Complexity that reflects the problem stays. Complexity that reflects indecision,
@@ -57,8 +74,9 @@ correctness for brevity.
 
 - YAML, TOML and similar config carry no prose comments. Use the format's
   `description` field if it has one; otherwise one short line at most.
-- Docs state how it works now, not how it got there: no history, jargon or filler
-  sections. When a doc grows, dedupe and split by topic rather than append.
+- Docs state how it works now, not how it got there or what is planned: no
+  history, roadmaps, jargon or filler sections. When a doc grows, dedupe and split
+  by topic rather than append.
 
 ## Refactoring
 
