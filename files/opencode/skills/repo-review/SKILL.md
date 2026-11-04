@@ -18,7 +18,8 @@ Default is the whole target.
 - **mode:** `review` (steps 1-5, then stop), `annotate` (steps 1-4, then write
   each finding as an inline note in the user's marker style next to the code it
   concerns, no code changes), `plan` (adds step 6, then stop), `apply` (step 7 on
-  an approved plan). Default: `plan`.
+  an approved plan). Default: `plan`. For someone else's PR or branch, use the
+  `pr-review` skill instead.
 - **focus:** optional, one or more of `dead-code`, `structure`, `comments`, `docs`,
   `naming`, `tooling`. Default: all, in that priority.
 

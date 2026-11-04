@@ -95,6 +95,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/layouts.md"
       - src: opencode/skills/repo-review/references/report-template.md
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/report-template.md"
+      - src: opencode/skills/pr-review/SKILL.md
+        dest: "{{ home_dir }}/.config/opencode/skills/pr-review/SKILL.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     packages:
