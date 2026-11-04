@@ -87,8 +87,10 @@
     "default_model": {
       "enable_thinking": true,
       "provider": "copilot_chat",
-      "model": "{{ ai_chat_model }}"
-    }
+      "model": "{{ ai_model }}"
+    },
+    "commit_message_model": { "provider": "copilot_chat", "model": "{{ ai_small_model }}" },
+    "thread_summary_model": { "provider": "copilot_chat", "model": "{{ ai_small_model }}" }
   },
 
   // Telemetry

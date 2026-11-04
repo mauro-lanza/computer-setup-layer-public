@@ -44,20 +44,14 @@ runtimes_tfenv_terraform_version: "1.12.2"
 # ─── Shared values consumed by config TEMPLATES ──────────────────────────────
 # Read by this layer's templates, not by other vars (layer vars cannot reference each other).
 
-# Provider-prefixed model id, as opencode expects.
-ai_default_model: "github-copilot/claude-sonnet-5.5"
+# Bare model ids, shared by the opencode, zed and vscode templates; each adds its own provider prefix.
+ai_model: "claude-sonnet-5.5"
 
-# Model for opencode's hidden title agent; short generations don't need the default.
-ai_title_model: "github-copilot/claude-haiku-5.5"
-
-# Bare model id, as Zed's copilot_chat provider expects (no provider prefix).
-ai_chat_model: "claude-sonnet-5.5"
+# Short generations (titles, commit messages, summaries) don't need the default model.
+ai_small_model: "claude-haiku-5.5"
 
 # Mono variant: p10k's icon padding assumes one-cell icons. Read by the vscode and zed templates.
 terminal_font_family: "MesloLGS Nerd Font Mono"
-
-# Model id in GitLens' "<vendor>:<model>" form.
-ai_gitlens_model: "copilot:gpt-4.1"
 
 # Reports only while the credential is missing.
 logins:
