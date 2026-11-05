@@ -85,6 +85,12 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/index.ts"
       - src: opencode/plugins/shell-policy/policy.ts
         dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/policy.ts"
+      - src: opencode/plugins/shell-policy/rules.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/rules.ts"
+      - src: opencode/plugins/shell-policy/vendor/unbash.js
+        dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/vendor/unbash.js"
+      - src: opencode/plugins/shell-policy/vendor/LICENSE
+        dest: "{{ home_dir }}/.config/opencode/plugins/shell-policy/vendor/LICENSE"
       - src: opencode/skills/repo-review/SKILL.md
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/SKILL.md"
       - src: opencode/skills/repo-review/references/criteria.md
