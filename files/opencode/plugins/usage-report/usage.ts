@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite"
 import { existsSync, readFileSync, realpathSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { localDay } from "./dates"
 
 export type ErrorClass = "permission_denied" | "policy_rejected" | "aborted" | "other_error" | "pending"
 
@@ -10,6 +11,7 @@ export const SHELL_TOOLS = ["bash", "shell"]
 export const EXECUTE_TOOL = "execute"
 export const FILE_TOOLS = ["edit", "write", "apply_patch"]
 const PRICE_FIELDS = ["input", "output", "cache_read", "cache_write"] as const
+const MIGRATION_DOC = join(import.meta.dir, "MIGRATION.md")
 const RE_PERMISSION = /rejected permission|specified a rule which prevents|^Permission denied/i
 const REQUIRED_COLUMNS = {
   session_v2: ["id", "parent_id", "agent", "model", "time_created", "time_busy", "directory"],
@@ -102,6 +104,13 @@ export interface Usage {
   compactions: [string, number][]
   userTurns: [string, number][]
   skippedRows: number
+  missingV1: MissingV1 | null
+}
+
+interface MissingV1 {
+  count: number
+  from: string
+  to: string
 }
 
 export interface PriceTier extends PriceFields {
@@ -199,7 +208,15 @@ function parseObject<T extends object>(text: string): T | null {
   }
 }
 
-/** Sessions and assistant calls outside scratch dirs. Only session_v2/session_message are read: they already hold the migrated V1 history. Rows with unparseable JSON are skipped and counted. */
+/** V1 sessions the one-time import never copied (created by a V1 client afterwards); null when none or when there is no V1 table. */
+function missingV1Sessions(db: Database): MissingV1 | null {
+  if (!db.query("select 1 from sqlite_master where type='table' and name='session'").get()) return null
+  const times = (db.query("select time_created from session where id not in (select id from session_v2)").all() as { time_created: number }[]).map((r) => r.time_created)
+  if (!times.length) return null
+  return { count: times.length, from: localDay(Math.min(...times)), to: localDay(Math.max(...times)) }
+}
+
+/** Sessions and assistant calls outside scratch dirs. Reads session_v2/session_message, which hold V1 history only up to the one-time import; later V1 sessions are counted in missingV1. Rows with unparseable JSON are skipped and counted. */
 export function loadUsage(db: Database, prices: Prices, scratch: string[]): Usage {
   let skippedRows = 0
   const sessions = new Map<string, Session>()
@@ -281,7 +298,7 @@ export function loadUsage(db: Database, prices: Prices, scratch: string[]): Usag
       context: fresh + cacheWrite + cacheRead,
     })
   }
-  return { sessions, calls, compactions, userTurns, skippedRows }
+  return { sessions, calls, compactions, userTurns, skippedRows, missingV1: missingV1Sessions(db) }
 }
 
 export function usageWarnings(usage: Usage): string {
@@ -290,6 +307,8 @@ export function usageWarnings(usage: Usage): string {
   for (const c of usage.calls) if (c.unpriced) unpriced.set(c.model || "?", (unpriced.get(c.model || "?") ?? 0) + 1)
   if (unpriced.size) lines.push(`warning: ${sum([...unpriced.values()])} calls have no list price and are excluded from cost_list: ${JSON.stringify(Object.fromEntries(unpriced))}`)
   if (usage.skippedRows) lines.push(`warning: ${usage.skippedRows} rows with unreadable JSON were skipped`)
+  const gap = usage.missingV1
+  if (gap) lines.push(`warning: ${gap.count} V1 sessions (${gap.from}..${gap.to}) are not in session_v2 and are not counted; see ${MIGRATION_DOC}`)
   return lines.join("\n")
 }
 

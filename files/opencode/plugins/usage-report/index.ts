@@ -10,7 +10,7 @@ export default Plugin.define({
   id: "usage-report",
   async setup(ctx) {
     const home = homedir()
-    const paths = locations(home, process.env.OPENCODE_DB)
+    const paths = locations(home, process.env)
     await ctx.tool.transform((editor) => {
       editor.add({
         name: "usage_report",

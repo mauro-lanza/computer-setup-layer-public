@@ -113,8 +113,10 @@ test("readChanges names the bad entry in a malformed file", () => {
 })
 
 test("locations honours OPENCODE_DB and resolveOutDir accepts only absolute or ~/ paths", () => {
-  expect(locations("/h", undefined).db).toBe("/h/.local/share/opencode/opencode.db")
-  expect(locations("/h", "/x/o.db").db).toBe("/x/o.db")
+  expect(locations("/h", {})).toEqual({ db: "/h/.local/share/opencode/opencode.db", models: "/h/.cache/opencode/models.json", changes: "/h/.config/opencode/usage-config-changes.json" })
+  expect(locations("/h", { OPENCODE_DB: "/x/o.db" }).db).toBe("/x/o.db")
+  expect(locations("/h", { OPENCODE_DB: "o.db", XDG_DATA_HOME: "/d" }).db).toBe("/d/opencode/o.db")
+  expect(locations("/h", { XDG_CACHE_HOME: "/c", XDG_CONFIG_HOME: "/f" })).toMatchObject({ models: "/c/opencode/models.json", changes: "/f/opencode/usage-config-changes.json" })
   expect(resolveOutDir("~/out", "/h")).toBe("/h/out")
   expect(resolveOutDir("/abs/out/", "/h")).toBe("/abs/out")
   expect(() => resolveOutDir("rel/out", "/h")).toThrow("absolute")
@@ -190,6 +192,19 @@ test("loadUsage skips and counts rows with unreadable JSON", () => {
   expect(usageWarnings(usage)).toContain("2 rows with unreadable JSON")
 })
 
+test("usageWarnings reports V1 sessions missing from session_v2 and stays silent without a V1 table", () => {
+  const db = fixture()
+  expect(loadUsage(db, prices, []).missingV1).toBeNull()
+  db.run("create table session (id text, time_created integer)")
+  db.run("insert into session values ('root', 0)")
+  expect(loadUsage(db, prices, []).missingV1).toBeNull()
+  db.run("insert into session values ('gap1', ?)", [new Date(2026, 9, 16, 12).getTime()])
+  db.run("insert into session values ('gap2', ?)", [new Date(2026, 9, 18, 12).getTime()])
+  const warning = usageWarnings(loadUsage(db, prices, []))
+  expect(warning).toContain("2 V1 sessions (2026-10-16..2026-10-18) are not in session_v2 and are not counted; see ")
+  expect(warning).toContain("MIGRATION.md")
+})
+
 test("openUsage reports a missing database and an empty one clearly", () => {
   expect(() => openUsage("/nonexistent/opencode.db", "/nonexistent/models.json")).toThrow("not found")
   const dir = mkdtempSync(join(tmpdir(), "usage-report-"))
@@ -204,4 +219,5 @@ test("openUsage reports a missing database and an empty one clearly", () => {
   db.close()
   writeFileSync(join(dir, "models.json"), "{}")
   expect(() => openUsage(join(dir, "opencode.db"), join(dir, "models.json"))).toThrow("nothing to report")
+  expect(() => openUsage(join(dir, "opencode.db"), join(dir, "absent.json"))).toThrow("absent.json not found")
 })
