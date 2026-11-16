@@ -8,5 +8,8 @@
   },
   "tabs": {
     "mode": "off"
+  },
+  "session": {
+    "grouping": "none"
   }
 }
