@@ -1,7 +1,8 @@
 # Code Style
 
 Simplicity is well-implemented complexity, not less capability. Never trade
-correctness for brevity.
+correctness for brevity. The reasoning and worked examples behind these rules
+are in `engineering-handbook.md`, next to this file.
 
 ## Structure
 
@@ -10,8 +11,9 @@ correctness for brevity.
   format, a protocol), or when more than one consumer imports it. Modules that
   depend on each other's internals (dict shapes, paths, env vars) belong in one.
   A single-purpose script stays one file: constants and types first, then
-  functions in the order they run, `main` last. Merge near-duplicates; extract
-  only what is duplicated across files.
+  functions in the order they run, `main` last. Merge near-duplicates. Extract
+  when the abstraction is plug and play: usable from its name alone, hiding one
+  decision, with no flags to fit callers. Otherwise keep the code inline.
 - The entry point reads as the plan: the steps in order, each a single call. It
   owns the order; the functions own the details. Pass each function the values it
   needs, not the whole parsed input.
@@ -19,7 +21,8 @@ correctness for brevity.
   at import time across modules.
 - A helper with one call site should be inlined, unless naming it is what makes
   the caller readable.
-- Put a constant next to its only user, not in a shared bucket.
+- Constants go together at the top of the file that uses them, not in a shared
+  bucket and not above a function deep in the file.
 - Names say what the thing does. Drop a parent's name only when the path already
   makes it unambiguous; otherwise be descriptive over short.
 
@@ -63,7 +66,9 @@ correctness for brevity.
   implementation. Everything else gets one line or none.
 - Docstrings: one line on what it does and what it returns. Extend only for the
   caller's contract or subtle failure modes. Skip entirely when the signature is
-  self-evident. A docstring longer than the function body is a smell.
+  self-evident. A docstring longer than the function body is a smell, except in
+  code written to teach an idea (an algorithm, a domain model), where it carries
+  the idea the code depends on.
 - Re-read your own comments before finishing; they come out long. Cut each to the
   why.
 - A comment that a refactor would silently make wrong should not have been written.

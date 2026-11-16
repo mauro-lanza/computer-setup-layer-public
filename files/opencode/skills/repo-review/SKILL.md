@@ -7,7 +7,8 @@ description: Use when asked to review, clean up, simplify, declutter, restructur
 
 Judge whether the structure earns its place: pretty is not the test, functional is.
 This skill is the procedure and the checklist. Style rules live in the global
-instruction files (`code-style.md`, `workflow.md`) when installed; the repo's own
+instruction files (`code-style.md`, `workflow.md`) when installed, with their
+reasoning in `engineering-handbook.md`; the repo's own
 conventions and recorded decisions override both.
 
 ## Invocation
@@ -56,7 +57,8 @@ If the user gave constraints or non-goals, they override everything below.
 ## Rules of engagement
 
 - Stay in scope. Out-of-scope findings go in a separate list; never fix them.
-- Default to deleting. Adding is the last resort and needs a named consumer.
+- Default to deleting. Adding is the last resort and needs a named consumer;
+  structure grows only on a signal present in the code now.
 - Do not add custom machinery when a standard tool or an existing helper does it.
 - Do not decouple independent deployables to share code.
 - Do not flag choices that are convention in this repo (version suffixes, type

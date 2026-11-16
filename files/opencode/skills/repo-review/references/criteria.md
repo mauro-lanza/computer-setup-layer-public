@@ -41,8 +41,9 @@ Ask what each layer buys: isolation, discoverability, stable external IDs, build
 or deploy triggers, permissions. If it buys nothing, flatten it.
 
 - Group by concern and lifecycle, not by category or mechanism.
-- Colocate: config next to what it configures; constants and helpers next to their
-  only consumer; shared ones in one named place.
+- Colocate: config next to what it configures; constants at the top of the file
+  that uses them, helpers next to their only consumer; shared ones in one named
+  place.
 - Root holds only what tooling requires there; governance config (lint, hooks,
   ignore) lives once at the root.
 - Module order: constants, types, then functions in the order they run, entry

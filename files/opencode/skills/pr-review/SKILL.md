@@ -9,7 +9,8 @@ Review another person's work so they learn from it, not to rewrite it. The outpu
 is inline notes in the user's voice plus a short themes summary to open the
 discussion. The checklist is shared with `repo-review`: read
 `../repo-review/references/criteria.md` and `../repo-review/references/anti-patterns.md`.
-Style rules live in the global `code-style.md` and `workflow.md`.
+Style rules live in the global `code-style.md` and `workflow.md`; the reasoning
+behind them, for judging trade-offs, is in `engineering-handbook.md`.
 
 ## Invocation
 

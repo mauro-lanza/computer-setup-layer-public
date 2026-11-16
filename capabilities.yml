@@ -71,6 +71,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/cli.json"
       - src: opencode/code-style.md
         dest: "{{ home_dir }}/.config/opencode/code-style.md"
+      - src: opencode/engineering-handbook.md
+        dest: "{{ home_dir }}/.config/opencode/engineering-handbook.md"
       - src: opencode/tool-use.md
         dest: "{{ home_dir }}/.config/opencode/tool-use.md"
       - src: opencode/vcs-conventions.md
