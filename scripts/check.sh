@@ -156,8 +156,8 @@ if [[ -n "$missing" ]]; then
 fi
 echo "  ok  every opencode file has a config entry"
 
-echo "==> Shell-policy plugin"
-bun test files/opencode/plugins/shell-policy
+echo "==> Shell-policy and usage-report plugins"
+bun test files/opencode/plugins/shell-policy files/opencode/plugins/usage-report
 
 echo
 echo "Checks passed"
