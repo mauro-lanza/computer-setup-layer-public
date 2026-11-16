@@ -10,6 +10,6 @@
     "mode": "off"
   },
   "session": {
-    "grouping": "none"
+    "verbosity": "medium"
   }
 }
