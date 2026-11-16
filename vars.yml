@@ -31,9 +31,6 @@ git_global_gitignore_entries:
   - venv/
   - .idea/
   - .vscode/
-  - .codanna/
-  - .codannaignore
-  - .fastembed_cache
 
 # ─── Runtimes (runtimes role) ────────────────────────────────────────────────
 # Was pinned in the engine's own defaults, which contradicted "the engine ships

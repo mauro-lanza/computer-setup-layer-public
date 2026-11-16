@@ -142,6 +142,20 @@ refute "the plugin raised with no CLI present" "$out" 'plugin error|Traceback'
 expect "no title line without a CLI" "$out" '^:questionmark'
 echo "  ok  renders an unknown state rather than failing"
 
+echo "==> opencode files are deployed"
+# Tests and their cases stay in the layer; everything else must be a config src.
+missing=""
+while IFS= read -r f; do
+    src="${f#files/}"
+    grep -qF -- "src: $src" capabilities.yml || missing+="  $src"$'\n'
+done < <(find files/opencode -type f ! -name '*.test.ts' ! -name cases.ts | sort)
+if [[ -n "$missing" ]]; then
+    echo "ERROR: files under files/opencode/ not referenced as a config src in capabilities.yml:" >&2
+    printf '%s' "$missing" >&2
+    exit 1
+fi
+echo "  ok  every opencode file has a config entry"
+
 echo "==> Shell-policy plugin"
 bun test files/opencode/plugins/shell-policy
 
