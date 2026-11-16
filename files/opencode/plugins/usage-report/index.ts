@@ -1,23 +1,16 @@
 import { Plugin } from "@opencode/plugin"
 import { homedir } from "node:os"
-import { isAbsolute, join, resolve } from "node:path"
-import { chartsHtml, loadChanges } from "./charts"
-import { buildReport, exportRows, loadWindows, markdownReport, openUsage, toCsv, unpricedWarning, type Format } from "./report"
-
-const HOME = homedir()
-const DB_PATH = join(HOME, ".local/share/opencode/opencode.db")
-const MODELS_PATH = join(HOME, ".cache/opencode/models.json")
-const CHANGES_PATH = join(HOME, ".config/opencode/usage-config-changes.json")
-
-function resolveOutDir(outDir: string): string {
-  const expanded = outDir === "~" || outDir.startsWith("~/") ? join(HOME, outDir.slice(1)) : outDir
-  if (!isAbsolute(expanded)) throw new Error(`outDir must be absolute or start with ~/, got: ${outDir}`)
-  return resolve(expanded)
-}
+import { join } from "node:path"
+import { chartsHtml } from "./charts"
+import { buildReport, exportRows, loadWindows, markdownReport, readChanges, toCsv, type Format } from "./report"
+import { openUsage, usageWarnings } from "./usage"
+import { locations, resolveOutDir } from "./paths"
 
 export default Plugin.define({
   id: "usage-report",
   async setup(ctx) {
+    const home = homedir()
+    const paths = locations(home, process.env.OPENCODE_DB)
     await ctx.tool.transform((editor) => {
       editor.add({
         name: "usage_report",
@@ -32,9 +25,9 @@ export default Plugin.define({
         options: { codemode: false },
         execute: async (input) => {
           const format = (input as { format: Format }).format
-          const usage = openUsage(DB_PATH, MODELS_PATH)
-          const report = buildReport(format, usage, loadWindows(CHANGES_PATH))
-          return { content: format === "md" ? report + unpricedWarning(usage) : report }
+          const usage = openUsage(paths.db, paths.models)
+          const report = buildReport(format, usage, loadWindows(readChanges(paths.changes)))
+          return { content: format === "md" ? report + usageWarnings(usage) : report }
         },
       })
       editor.add({
@@ -49,7 +42,7 @@ export default Plugin.define({
         },
         options: { codemode: false },
         execute: async (input, context) => {
-          const outDir = resolveOutDir((input as { outDir: string }).outDir)
+          const outDir = resolveOutDir((input as { outDir: string }).outDir, home)
           await ctx.permission.assert({
             sessionID: context.sessionID,
             agent: context.agent,
@@ -58,14 +51,15 @@ export default Plugin.define({
             resources: [outDir],
             save: [outDir],
           })
-          const usage = openUsage(DB_PATH, MODELS_PATH)
+          const usage = openUsage(paths.db, paths.models)
           const rows = exportRows(usage)
+          const changes = readChanges(paths.changes)
           await Promise.all([
-            Bun.write(join(outDir, "usage-charts.html"), chartsHtml(rows, loadChanges(CHANGES_PATH))),
+            Bun.write(join(outDir, "usage-charts.html"), chartsHtml(rows, changes)),
             Bun.write(join(outDir, "usage.csv"), toCsv(rows)),
-            Bun.write(join(outDir, "report.md"), markdownReport(usage, loadWindows(CHANGES_PATH))),
+            Bun.write(join(outDir, "report.md"), markdownReport(usage, loadWindows(changes))),
           ])
-          return { content: `wrote usage-charts.html, usage.csv and report.md to ${outDir}\n${unpricedWarning(usage)}`.trimEnd() }
+          return { content: `wrote usage-charts.html, usage.csv and report.md to ${outDir}\n${usageWarnings(usage)}`.trimEnd() }
         },
       })
     })

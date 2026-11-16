@@ -99,6 +99,14 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/report.ts"
       - src: opencode/plugins/usage-report/charts.ts
         dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/charts.ts"
+      - src: opencode/plugins/usage-report/paths.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/paths.ts"
+      - src: opencode/plugins/usage-report/dates.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/dates.ts"
+      - src: opencode/plugins/usage-report/usage.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/usage.ts"
+      - src: opencode/plugins/usage-report/shell.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/shell.ts"
       - src: opencode/skills/repo-review/SKILL.md
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/SKILL.md"
       - src: opencode/skills/repo-review/references/criteria.md

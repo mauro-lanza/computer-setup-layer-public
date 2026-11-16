@@ -1,4 +1,18 @@
-import type { Command, Word } from "./policy"
+export interface Word {
+  text: string
+  dirty: boolean
+}
+
+export interface Command {
+  name: string
+  args: Word[]
+  redirects: { op: string; target?: string }[]
+  heredoc?: string
+  hereString: boolean
+  pipeIn: boolean
+  background: boolean
+  xargs: boolean
+}
 
 type Rule = (cmd: Command) => string | undefined
 
@@ -6,6 +20,29 @@ interface Options {
   flags: Map<string, string | true>
   operands: string[]
 }
+
+const CD = "use the shell tool's `workdir` parameter instead of `cd`"
+const READ = "use the `read` tool (offset/limit for line ranges)"
+const PASS_HEREDOC = "pass the heredoc to the command directly, e.g. `git commit -F - <<'EOF'` or `gh pr create --body-file - <<'EOF'`"
+const GLOB = "use the `glob` tool to list or find files"
+const LS = "use `stat` for file metadata, the `glob` tool to list or find files (or `read` on a directory)"
+const TAIL = "use the `read` tool (offset/limit; `wc -l` gives the line count for a tail)"
+const GREP = "use the `grep` tool"
+const EDIT = "use the `edit` tool (or `write` for a whole file)"
+const SHELL_STDIN = "do not feed a script to a shell on stdin (pipe, heredoc, `-s`): write the commands as separate shell calls or run a script file"
+const PS_ENVIRONMENT = "ps with the `e` flag shows other processes' environment; drop it"
+const GH_API = "gh api is read-only here: GET requests only, no -f/-F/--input fields or graphql; ask the user or use a worker with approval for writes"
+const BACKGROUND = "run it with the shell tool's background option instead of `&` and a log redirect"
+
+const GH_API_VALUE_FLAGS = new Set(["-H", "--header", "-q", "--jq", "-t", "--template", "--hostname", "--cache", "-p", "--preview"])
+const PYTHON_WRITE = /write_text|write_bytes|open\([^)]*(?:,|mode\s*=)\s*["'][wax]/
+const SCRIPT_WRITE = /writeFile|appendFile|createWriteStream|Bun\.write|File\.write|File\.open\([^)]*,\s*["'][wa]/
+const MAX_COMMIT_WORDS = 25
+const BODY_OK = /^Body-OK:\s*\S/m
+const FILE_MESSAGE = /^\$\(\s*cat\s+([^\s<)'"$`][^\s)]*)\s*\)$/
+const DYNAMIC: Word = { text: "", dirty: true }
+const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
+const NOT_FILES = new Set(["/dev/null", "/dev/stderr", "/dev/stdout", "/dev/tty"])
 
 // Splits args into flags and operands; valueFlags lists the short flags that take a value, longValue the long ones.
 function options(args: Word[], valueFlags: string, longValue: string[] = []): Options {
@@ -40,25 +77,17 @@ const always = (hint: string): Rule => () => hint
 const readsFile = ({ redirects }: Command) => redirects.some((r) => r.op === "<")
 const readsStdin = (cmd: Command) => (cmd.pipeIn && !cmd.xargs) || cmd.heredoc !== undefined || cmd.hereString
 
-const CD = "use the shell tool's `workdir` parameter instead of `cd`"
-
-const READ = "use the `read` tool (offset/limit for line ranges)"
-const PASS_HEREDOC = "pass the heredoc to the command directly, e.g. `git commit -F - <<'EOF'` or `gh pr create --body-file - <<'EOF'`"
 // The `cat *` glob also matches a bare `cat`, so every cat is rejected.
 const cat: Rule = (cmd) => (options(cmd.args, "").operands.some((o) => o !== "-") || readsFile(cmd) ? READ : PASS_HEREDOC)
 const nl: Rule = (cmd) => (options(cmd.args, "bdfhilnsvw").operands.length || readsFile(cmd) ? READ : undefined)
 
-const GLOB = "use the `glob` tool to list or find files"
-const LS = "use `stat` for file metadata, the `glob` tool to list or find files (or `read` on a directory)"
-
-const TAIL = "use the `read` tool (offset/limit; `wc -l` gives the line count for a tail)"
 const headTail: Rule = (cmd) => {
   const { flags, operands } = options(cmd.args, "nc", ["lines", "bytes"])
   const follows = cmd.name === "tail" && ["f", "F", "follow"].some((k) => flags.has(k))
   return !follows && (operands.length || readsFile(cmd)) ? `${cmd.name} with a file: ${TAIL}` : undefined
 }
 
-const GREP = "use the `grep` tool"
+const GREP_CONTEXT = ["regexp", "file", "max-count", "after-context", "before-context", "context"]
 function grepLike(valueFlags: string, longValue: string[]): Rule {
   return (cmd) => {
     const { flags, operands } = options(cmd.args, valueFlags, longValue)
@@ -68,11 +97,9 @@ function grepLike(valueFlags: string, longValue: string[]): Rule {
     return files > 0 || recursive || readsFile(cmd) || !readsStdin(cmd) ? GREP : undefined
   }
 }
-const GREP_CONTEXT = ["regexp", "file", "max-count", "after-context", "before-context", "context"]
 const grep = grepLike("efmABCdD", [...GREP_CONTEXT, "include", "exclude"])
 const rg = grepLike("efmABCgtTjMrdE", [...GREP_CONTEXT, "glob", "type"])
 
-const EDIT = "use the `edit` tool (or `write` for a whole file)"
 function sedAwk(valueFlags: string, longValue: string[], scriptFlags: string[]): Rule {
   return ({ name, args }) => {
     const { flags, operands } = options(args, valueFlags, longValue)
@@ -88,8 +115,6 @@ const tee: Rule = ({ args }) => (options(args, "").operands.length ? `tee to a f
 // The `sort *-o*` glob matches any argument containing -o, so the rule is as broad.
 const sort: Rule = ({ args }) => (args.some((a) => a.text.includes("-o")) ? `sort -o writes a file: ${EDIT}` : undefined)
 
-const PYTHON_WRITE = /write_text|write_bytes|open\([^)]*(?:,|mode\s*=)\s*["'][wax]/
-const SCRIPT_WRITE = /writeFile|appendFile|createWriteStream|Bun\.write|File\.write|File\.open\([^)]*,\s*["'][wa]/
 function inlineWrites(label: string, evalFlags: string, valueFlags: string, pattern: RegExp): Rule {
   return ({ args, heredoc }) => {
     const { flags } = options(args, valueFlags)
@@ -101,7 +126,6 @@ function inlineWrites(label: string, evalFlags: string, valueFlags: string, patt
 const python = inlineWrites("python", "c", "cmWX", PYTHON_WRITE)
 const node = inlineWrites("script", "ep", "erI", SCRIPT_WRITE)
 
-const SHELL_STDIN = "do not feed a script to a shell on stdin (pipe, heredoc, `-s`): write the commands as separate shell calls or run a script file"
 const shell: Rule = (cmd) => {
   const { flags, operands } = options(cmd.args, "")
   if (flags.has("s")) return SHELL_STDIN
@@ -109,7 +133,6 @@ const shell: Rule = (cmd) => {
   return fed && !flags.has("c") && operands.length === 0 ? SHELL_STDIN : undefined
 }
 
-const PS_ENVIRONMENT = "ps with the `e` flag shows other processes' environment; drop it"
 const ps: Rule = ({ args }) => {
   for (let k = 0; k < args.length; k++) {
     const arg = args[k].text
@@ -119,8 +142,6 @@ const ps: Rule = ({ args }) => {
   return undefined
 }
 
-const GH_API = "gh api is read-only here: GET requests only, no -f/-F/--input fields or graphql; ask the user or use a worker with approval for writes"
-const GH_API_VALUE_FLAGS = new Set(["-H", "--header", "-q", "--jq", "-t", "--template", "--hostname", "--cache", "-p", "--preview"])
 // gh api turns into a POST with -f/-F/--input; graphql needs -f too, so it is refused as well.
 // Only the separate `-X GET` / `--method GET` form is allowed: the permission globs cannot tell the joined forms apart.
 const ghApi: Rule = ({ args }) => {
@@ -140,10 +161,6 @@ const ghApi: Rule = ({ args }) => {
   return fields.length ? GH_API : undefined
 }
 
-const MAX_COMMIT_WORDS = 25
-const BODY_OK = /^Body-OK:\s*\S/m
-const FILE_MESSAGE = /^\$\(\s*cat\s+([^\s<)'"$`][^\s)]*)\s*\)$/
-const DYNAMIC: Word = { text: "", dirty: true }
 const git: Rule = ({ args, heredoc }) => {
   let sub = -1
   for (let k = 0; k < args.length; k++) {
@@ -189,9 +206,6 @@ const git: Rule = ({ args, heredoc }) => {
   )
 }
 
-const BACKGROUND = "run it with the shell tool's background option instead of `&` and a log redirect"
-const WRITE_REDIRECTS = new Set([">", ">>", ">|", "&>", "&>>"])
-const NOT_FILES = new Set(["/dev/null", "/dev/stderr", "/dev/stdout", "/dev/tty"])
 const redirectWrites: Rule = ({ name, redirects, background }) => {
   const writes = redirects.some((r) => WRITE_REDIRECTS.has(r.op) && r.target && !NOT_FILES.has(r.target))
   if (writes && background) return `${name} in the background with a file redirect: ${BACKGROUND}`

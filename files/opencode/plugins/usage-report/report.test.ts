@@ -4,7 +4,11 @@ import { mkdtempSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { chartsHtml } from "./charts"
-import { churn, commits, errorClass, exportRows, listCost, listPrices, loadUsage, loadWindows, markdownReport, openUsage, prBodies, shellClass, toCsv, toJson, weekOf, windowOf } from "./report"
+import { weekOf } from "./dates"
+import { locations, resolveOutDir } from "./paths"
+import { exportRows, loadWindows, markdownReport, readChanges, toCsv, toJson, windowOf } from "./report"
+import { commits, prBodies, shellClass } from "./shell"
+import { churn, errorClass, listCost, listPrices, loadUsage, openUsage, usageWarnings } from "./usage"
 
 const prices = listPrices({
   acme: {
@@ -87,11 +91,33 @@ test("loadWindows splits at major changes only", () => {
   const dir = mkdtempSync(join(tmpdir(), "usage-report-"))
   const file = join(dir, "changes.json")
   writeFileSync(file, JSON.stringify([{ date: "2026-02-01", label: "a", major: true }, { date: "2026-02-10", label: "b", major: false }, { date: "2026-03-01T12:00:00", label: "c", major: true }]))
-  const windows = loadWindows(file)
+  const windows = loadWindows(readChanges(file))
   expect(windows.map(([l]) => l)).toEqual(["W0 baseline (before 2026-02-01)", "W1 2026-02-01 a", "W2 2026-03-01 c"])
   expect(windowOf(windows, new Date(2026, 1, 1).getTime() - 1)).toBe(windows[0][0])
   expect(windowOf(windows, new Date(2026, 1, 20).getTime())).toBe(windows[1][0])
-  expect(loadWindows(join(dir, "missing.json"))).toEqual([["all history", 0]])
+  expect(loadWindows(readChanges(join(dir, "missing.json")))).toEqual([["all history", 0]])
+})
+
+test("readChanges names the bad entry in a malformed file", () => {
+  const dir = mkdtempSync(join(tmpdir(), "usage-report-"))
+  const read = (entries: unknown) => {
+    const file = join(dir, "bad.json")
+    writeFileSync(file, JSON.stringify(entries))
+    return () => readChanges(file)
+  }
+  const ok = { date: "2026-02-01", label: "a", major: true }
+  expect(read([ok, { ...ok, date: "not a date" }])).toThrow("entry 1")
+  expect(read([{ ...ok, label: 3 }])).toThrow("label")
+  expect(read([{ ...ok, major: "yes" }])).toThrow("major")
+  expect(read({})).toThrow("JSON array")
+})
+
+test("locations honours OPENCODE_DB and resolveOutDir accepts only absolute or ~/ paths", () => {
+  expect(locations("/h", undefined).db).toBe("/h/.local/share/opencode/opencode.db")
+  expect(locations("/h", "/x/o.db").db).toBe("/x/o.db")
+  expect(resolveOutDir("~/out", "/h")).toBe("/h/out")
+  expect(resolveOutDir("/abs/out/", "/h")).toBe("/abs/out")
+  expect(() => resolveOutDir("rel/out", "/h")).toThrow("absolute")
 })
 
 function fixture(): Database {
@@ -148,14 +174,30 @@ test("exportRows aggregates per local day, agent and model and renders csv/json"
 test("markdown report and charts render from the fixture", () => {
   const usage = loadUsage(fixture(), prices, ["/tmp/opencode/"])
   expect(markdownReport(usage, [["all history", 0]])).toContain("| all history | 1 | 1 | 2 |")
-  const html = chartsHtml(exportRows(usage), [{ day: "2026-03-30", label: "change", major: true }])
+  const html = chartsHtml(exportRows(usage), [{ when: 0, day: "2026-03-30", label: "change", major: true }])
   expect(html.match(/<svg/g)).toHaveLength(7)
   expect(html).not.toContain("http")
+})
+
+test("loadUsage skips and counts rows with unreadable JSON", () => {
+  const db = fixture()
+  db.run("insert into session_v2 values ('badmodel', null, 'build', '{oops', 0, 0, '/work/project')")
+  db.run("insert into session_message values ('root', 9, 'assistant', 1, 'not json')")
+  const usage = loadUsage(db, prices, ["/tmp/opencode/"])
+  expect(usage.skippedRows).toBe(2)
+  expect(usage.sessions.has("badmodel")).toBe(false)
+  expect(usage.calls).toHaveLength(2)
+  expect(usageWarnings(usage)).toContain("2 rows with unreadable JSON")
 })
 
 test("openUsage reports a missing database and an empty one clearly", () => {
   expect(() => openUsage("/nonexistent/opencode.db", "/nonexistent/models.json")).toThrow("not found")
   const dir = mkdtempSync(join(tmpdir(), "usage-report-"))
+  writeFileSync(join(dir, "models.json"), "{}")
+  const old = new Database(join(dir, "old.db"), { create: true })
+  old.run("create table session_v2 (id text)")
+  old.close()
+  expect(() => openUsage(join(dir, "old.db"), join(dir, "models.json"))).toThrow("table session_v2 lacks column(s) parent_id")
   const db = new Database(join(dir, "opencode.db"), { create: true })
   db.run("create table session_v2 (id text, parent_id text, agent text, model text, time_created integer, time_busy integer, directory text)")
   db.run("create table session_message (session_id text, seq integer, type text, time_created integer, data text)")

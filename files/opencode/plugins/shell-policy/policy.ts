@@ -1,44 +1,72 @@
 import { forEachChild, parse } from "./vendor/unbash.js"
-import { violation } from "./rules"
+import { violation, type Command, type Word } from "./rules"
 
-export interface Word {
-  text: string
-  dirty: boolean
-}
-
-export interface Command {
-  name: string
-  args: Word[]
-  redirects: { op: string; target?: string }[]
-  heredoc?: string
-  hereString: boolean
-  pipeIn: boolean
-  background: boolean
-  xargs: boolean
-}
-
-interface Node {
-  type: string
-  value?: string
-  operator?: string
-  text?: string
+// Only the node kinds this file reads; every other kind is `OtherNode` and is walked with forEachChild.
+interface WordNode {
+  type: "Word"
+  value: string
   parts?: Node[]
-  script?: Node
-  commands?: Node[]
-  command?: Node
-  name?: Node
-  prefix?: Node[]
-  suffix?: Node[]
-  redirects?: Node[]
-  target?: Node
-  body?: Node
+}
+interface DoubleQuotedNode {
+  type: "DoubleQuoted"
+  parts: Node[]
+}
+interface CommandExpansionNode {
+  type: "CommandExpansion"
+  script?: { commands: StatementNode[] }
+}
+interface StatementNode {
+  type: "Statement"
+  command: Node
   background?: boolean
 }
+interface PipelineNode {
+  type: "Pipeline"
+  commands: Node[]
+}
+interface RedirectedNode {
+  type: "Redirected"
+  command: Node
+  redirects: RedirectNode[]
+}
+interface CommandNode {
+  type: "Command"
+  name?: WordNode
+  prefix: Node[]
+  suffix: Node[]
+}
+interface HereDocNode {
+  type: "HereDoc"
+  body: { text: string }
+}
+interface HereStringNode {
+  type: "HereString"
+}
+interface FileRedirectNode {
+  type: "Redirect"
+  operator: string
+  target?: WordNode
+}
+interface OtherNode {
+  type: "Other"
+}
+
+type RedirectNode = HereDocNode | HereStringNode | FileRedirectNode
+type Node =
+  | WordNode
+  | DoubleQuotedNode
+  | CommandExpansionNode
+  | StatementNode
+  | PipelineNode
+  | RedirectedNode
+  | CommandNode
+  | RedirectNode
+  | OtherNode
 
 interface Context {
   pipeIn: boolean
   background: boolean
-  redirects: Node[]
+  redirects: RedirectNode[]
 }
 
 const FRESH: Context = { pipeIn: false, background: false, redirects: [] }
@@ -47,7 +75,7 @@ const SHELLS = new Set(["sh", "bash", "zsh"])
 const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/
 const EXPANSIONS = new Set(["SimpleExpansion", "ParameterExpansion", "CommandExpansion", "ArithmeticExpansion", "ProcessSubstitution"])
 const SUBSTITUTIONS = new Set(["CommandExpansion", "ProcessSubstitution", "ArithmeticCommandExpansion"])
-const REDIRECTS = new Set(["Redirect", "HereString", "HereDoc"])
+const REDIRECT_TYPES = new Set(["Redirect", "HereString", "HereDoc"])
 
 // Value flags of each wrapper; `operand` wrappers take one positional argument before the command.
 const WRAPPERS: Record<string, { valueFlags: string; operand?: true }> = {
@@ -65,6 +93,9 @@ const WRAPPERS: Record<string, { valueFlags: string; operand?: true }> = {
 
 const basename = (path: string) => path.split("/").pop()!
 
+const isWord = (node: Node): node is WordNode => node.type === "Word"
+const isRedirect = (node: Node): node is RedirectNode => REDIRECT_TYPES.has(node.type)
+
 function hasExpansion(node: Node): boolean {
   if (EXPANSIONS.has(node.type)) return true
   let found = false
@@ -75,34 +106,33 @@ function hasExpansion(node: Node): boolean {
 }
 
 // `"$(cat <<'EOF' ... EOF)"` is a literal message, not a dynamic one.
-function heredocMessage(word: Node): string | undefined {
+function heredocMessage(word: WordNode): string | undefined {
   let part = word.parts?.length === 1 ? word.parts[0] : undefined
-  if (part?.type === "DoubleQuoted") part = part.parts!.length === 1 ? part.parts![0] : undefined
-  const only = part?.type === "CommandExpansion" && part.script?.commands?.length === 1 ? part.script.commands[0].command : undefined
-  const doc = only?.type === "Command" && only.name?.value === "cat" && only.suffix!.length === 1 ? only.suffix![0] : undefined
-  return doc?.type === "HereDoc" ? doc.body!.text!.replace(/\n+$/, "") : undefined
+  if (part?.type === "DoubleQuoted") part = part.parts.length === 1 ? part.parts[0] : undefined
+  const only = part?.type === "CommandExpansion" && part.script?.commands.length === 1 ? part.script.commands[0].command : undefined
+  const doc = only?.type === "Command" && only.name?.value === "cat" && only.suffix.length === 1 ? only.suffix[0] : undefined
+  return doc?.type === "HereDoc" ? doc.body.text.replace(/\n+$/, "") : undefined
 }
 
-function toWord(node: Node): Word {
+function toWord(node: WordNode): Word {
   const message = heredocMessage(node)
-  return message === undefined ? { text: node.value!, dirty: hasExpansion(node) } : { text: message, dirty: false }
+  return message === undefined ? { text: node.value, dirty: hasExpansion(node) } : { text: message, dirty: false }
 }
 
-function toCommand(node: Node, ctx: Context): Command {
-  const own = [...node.prefix!, ...node.suffix!]
+function toCommand(node: CommandNode & { name: WordNode }, ctx: Context): Command {
   const command: Command = {
-    name: node.name!.value!,
-    args: node.suffix!.filter((n) => n.type === "Word").map(toWord),
+    name: node.name.value,
+    args: node.suffix.filter(isWord).map(toWord),
     redirects: [],
     hereString: false,
     pipeIn: ctx.pipeIn,
     background: ctx.background,
     xargs: false,
   }
-  for (const redirect of [...ctx.redirects, ...own.filter((n) => REDIRECTS.has(n.type))]) {
-    if (redirect.type === "HereDoc") command.heredoc = redirect.body!.text!
+  for (const redirect of [...ctx.redirects, ...[...node.prefix, ...node.suffix].filter(isRedirect)]) {
+    if (redirect.type === "HereDoc") command.heredoc = redirect.body.text
     else if (redirect.type === "HereString") command.hereString = true
-    else command.redirects.push({ op: redirect.operator!, target: redirect.target?.value })
+    else command.redirects.push({ op: redirect.operator, target: redirect.target?.value })
   }
   return command
 }
@@ -110,15 +140,15 @@ function toCommand(node: Node, ctx: Context): Command {
 function flatten(node: Node, ctx: Context, out: Command[]): void {
   switch (node.type) {
     case "Command":
-      if (node.name) out.push(toCommand(node, ctx))
+      if (node.name) out.push(toCommand({ ...node, name: node.name }, ctx))
       return forEachChild(node, (child: Node) => flatten(child, FRESH, out))
     case "Statement":
-      return flatten(node.command!, { ...ctx, pipeIn: false, background: ctx.background || !!node.background }, out)
+      return flatten(node.command, { ...ctx, pipeIn: false, background: ctx.background || !!node.background }, out)
     case "Pipeline":
-      return node.commands!.forEach((child, i) => flatten(child, { ...ctx, pipeIn: i > 0 }, out))
+      return node.commands.forEach((child, i) => flatten(child, { ...ctx, pipeIn: i > 0 }, out))
     case "Redirected":
-      flatten(node.command!, { ...ctx, redirects: [...ctx.redirects, ...node.redirects!] }, out)
-      return node.redirects!.forEach((redirect) => flatten(redirect, FRESH, out))
+      flatten(node.command, { ...ctx, redirects: [...ctx.redirects, ...node.redirects] }, out)
+      return node.redirects.forEach((redirect) => flatten(redirect, FRESH, out))
     default:
       return forEachChild(node, (child: Node) => flatten(child, SUBSTITUTIONS.has(node.type) ? FRESH : { ...ctx, pipeIn: false }, out))
   }
@@ -165,7 +195,11 @@ function embeddedSource({ name, args }: Command): string | undefined {
 }
 
 // Splits a shell command into the simple commands it would run, after unwrapping wrappers, eval and `sh -c`.
-export function simpleCommands(source: string, depth = 0): Command[] {
+export function simpleCommands(source: string): Command[] {
+  return unwrap(source, 0)
+}
+
+function unwrap(source: string, depth: number): Command[] {
   // A parse error still yields a partial tree: lint what was read and leave the rest to the permission globs.
   const flat: Command[] = []
   flatten(parse(source), FRESH, flat)
@@ -174,7 +208,7 @@ export function simpleCommands(source: string, depth = 0): Command[] {
     .filter((cmd) => cmd.name)
     .flatMap((cmd) => {
       const embedded = depth < MAX_EMBEDDED_DEPTH ? embeddedSource(cmd) : undefined
-      return embedded === undefined ? [cmd] : [cmd, ...simpleCommands(embedded, depth + 1)]
+      return embedded === undefined ? [cmd] : [cmd, ...unwrap(embedded, depth + 1)]
     })
 }
 

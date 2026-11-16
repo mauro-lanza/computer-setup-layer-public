@@ -189,6 +189,8 @@ export const cases: [string, string[]][] = [
   ["case x in a) echo;; b) ls;; esac", ["`glob`"]],
   ["case x in a) cd y; esac", ["`workdir`"]],
   ["case x in a) cat y;;", ["`read`"]],
+  ["ls $(", ["`glob`"]],
+  ['cat "a', ["`read`"]],
   ["case x in \"a)\") cd y;; esac", ["`workdir`"]],
   ["if true; then cat x; fi", ["`read`"]],
   ["{ cat x; }", ["`read`"]],

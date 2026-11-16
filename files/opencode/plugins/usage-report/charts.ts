@@ -1,11 +1,6 @@
-import { existsSync, readFileSync } from "node:fs"
-import { ERROR_CLASSES, localDay, parseLocal, weekOf, type ExportRow, type NumericColumn } from "./report"
-
-export interface Change {
-  day: string
-  label: string
-  major: boolean
-}
+import { parseLocal, weekOf } from "./dates"
+import type { Change, ExportRow, NumericColumn } from "./report"
+import { ERROR_CLASSES } from "./usage"
 
 interface Layer {
   name: string
@@ -36,15 +31,6 @@ const BAR_DAYS = 6
 const LABEL_MAX = 32
 
 type Totals = Record<NumericColumn, number>
-
-export function loadChanges(path: string): Change[] {
-  if (!existsSync(path)) return []
-  return (JSON.parse(readFileSync(path, "utf8")) as { date: string; label: string; major: boolean }[]).map((c) => ({
-    day: localDay(parseLocal(c.date)),
-    label: c.label,
-    major: c.major,
-  }))
-}
 
 const dayNumber = (iso: string) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5
 const ratio = (num: number, den: number) => (den ? num / den : null)
