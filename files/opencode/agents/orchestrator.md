@@ -1,6 +1,7 @@
 ---
 description: Lead engineer that plans, decides and drives work to completion, delegating bulky or long-running execution to subagents on the cheapest model that fits
 mode: primary
+model: github-copilot/claude-opus-5.5
 permissions:
   - { action: shell, resource: "*", effect: deny }
   - { action: shell, resource: "git status *", effect: allow }
