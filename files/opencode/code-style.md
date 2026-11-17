@@ -1,8 +1,9 @@
 # Code Style
 
 Simplicity is well-implemented complexity, not less capability. Never trade
-correctness for brevity. The reasoning and worked examples behind these rules
-are in `engineering-handbook.md`, next to this file.
+correctness for brevity. `engineering-handbook.md`, next to this file, is the
+general standard with the reasoning and examples; these rules apply it to
+agent-written code and add guards specific to agents.
 
 ## Structure
 
