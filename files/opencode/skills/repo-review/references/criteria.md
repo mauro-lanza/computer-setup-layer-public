@@ -1,7 +1,9 @@
 # Criteria
 
 Ranked: earlier items are reported first and weigh more. Each bullet is
-a question to ask, then the reason.
+a question to ask, then the reason. The standards behind them are in
+`engineering-handbook.md` (§ numbers below); this list adds only what a review
+must check on top.
 
 ## 1. Correctness
 
@@ -12,7 +14,8 @@ a question to ask, then the reason.
 
 ## 2. Does it earn its place? (deletion)
 
-Every file, folder, option, pin, config and abstraction must justify itself.
+Every file, folder, option, pin, config and abstraction must justify itself
+(handbook §1, §3 "Toward less structure").
 
 - Dead options, unused fields, superseded approaches, legacy and back-compat
   paths with no second consumer.
@@ -38,17 +41,16 @@ Every file, folder, option, pin, config and abstraction must justify itself.
 ## 4. Structure that is functional
 
 Ask what each layer buys: isolation, discoverability, stable external IDs, build
-or deploy triggers, permissions. If it buys nothing, flatten it.
+or deploy triggers, permissions. If it buys nothing, flatten it. Each structural
+finding names its slider (handbook §4), the force present in the code now, and
+the signal that would move it back; with no force, the §5 defaults apply.
 
 - Group by concern and lifecycle, not by category or mechanism.
-- Colocate: config next to what it configures; constants at the top of the file
-  that uses them, helpers next to their only consumer; shared ones in one named
-  place.
+- Colocate: config next to what it configures, helpers next to their only
+  consumer; shared ones in one named place.
 - Root holds only what tooling requires there; governance config (lint, hooks,
   ignore) lives once at the root.
-- Module order: constants, types, then functions in the order they run, entry
-  point last. Public surface minimal (`_` prefix unless imported elsewhere).
-- The entry point reads as the plan: the steps in order, each a single call.
+- Public surface minimal (`_` prefix unless imported elsewhere).
 - Modules that depend on each other's internals (dict shapes, paths, env vars)
   belong in one.
 - Acyclic, one-directional imports.
@@ -61,8 +63,9 @@ or deploy triggers, permissions. If it buys nothing, flatten it.
 
 ## 5. Interfaces
 
-- Required over optional, narrow types over `Any`/`str`, no defaults nobody asked
-  for. Derive values instead of passing them.
+Handbook §5 "Data and state", "Interfaces" and "Boundaries and errors". Also:
+
+- Derive values instead of passing them.
 - Data over code: flat schemas, defaults as a constant merged with overrides.
 - Config values required, no hidden fallbacks.
 
@@ -76,16 +79,13 @@ or deploy triggers, permissions. If it buys nothing, flatten it.
 
 ## 7. Comments and docstrings
 
-Detailed rules: `code-style.md` (global). Minimal fallback if it is absent: comments
-state the why, never history or review rationale; docstrings are one line. YAML and
-config files carry no prose comments.
+Handbook §5 "Comments and docs"; agent-specific rules in `code-style.md`.
 
 - Sweep the whole pattern across all files, not just the quoted example.
 
 ## 8. Docs
 
-Detailed rules: `code-style.md` (global). Minimal fallback if it is absent: docs
-describe the present; rationale lives in one place.
+Handbook §5 "Comments and docs"; `code-style.md` for config files.
 
 - Consistency pass after any rename, across docs and generated copies.
 

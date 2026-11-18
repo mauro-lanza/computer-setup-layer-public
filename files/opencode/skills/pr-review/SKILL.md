@@ -7,10 +7,10 @@ description: Use when reviewing someone else's PR, branch or code (a colleague o
 
 Review another person's work so they learn from it, not to rewrite it. The output
 is inline notes in the user's voice plus a short themes summary to open the
-discussion. The checklist is shared with `repo-review`: read
+discussion. The standard is `~/.config/opencode/engineering-handbook.md`
+(not loaded as an instruction: read it before reviewing). `code-style.md` applies
+it to agent-written code. The checklist is shared with `repo-review`: read
 `../repo-review/references/criteria.md` and `../repo-review/references/anti-patterns.md`.
-Style rules live in the global `code-style.md` and `workflow.md`; the reasoning
-behind them, for judging trade-offs, is in `engineering-handbook.md`.
 
 ## Invocation
 
@@ -32,25 +32,25 @@ behind them, for judging trade-offs, is in `engineering-handbook.md`.
 2. **Map.** Read the whole target and describe its shape back in a few lines: the
    entry point, the steps in order, the data passed between functions, where config
    and env vars are read. Wait for the user before writing notes.
-3. **Review** against the criteria, correctness first. Lenses that pay off on
-   AI-assisted code:
-   - Does the structure fit the size? Modules that read each other's dicts, paths
-     or env vars are one module. A short single-purpose script is one file.
-   - Does the entry point read as the plan, each step one call, with the details in
-     the functions? Warn against the opposite overcorrection as well.
-   - Is data passed between functions typed, with dicts only where it is written
-     as JSON? Is a value returned only so the caller can dig it back out? Are
-     arguments mutated?
+3. **Review** against the criteria, correctness first. Judge structure with the
+   handbook's method (§2-3): name the slider, the force present in the code now,
+   and the signal that would justify moving; a design choice backed by a real
+   force is the author's call, not a finding. Its §5 defaults apply only where no
+   force pulls. Lenses that pay off on AI-assisted code:
+   - Structure bigger than the problem (§1, §4 "One file ↔ many modules"), and the
+     opposite overcorrection.
    - Custom machinery (generic helpers, defensive parsing, wrapper classes) with
      one caller, where the standard library or a parameter does the job.
    - Edge cases that are accidents rather than decisions: input that becomes a
      path, switching modes on the same data, partial failures.
-   - Failure modes that actually happen: timeouts, kills, retries. Anything needing
-     manual recovery needs detection or an alert.
+   - Failure modes that actually happen (§5 "Boundaries and errors"). Anything
+     needing manual recovery needs detection or an alert.
    - Every comment, docstring and README claim checked against the code and the
      deployment.
    - Where future generalisation is expected: cheap seams (config at the top,
-     explicit arguments) instead of modules or helpers built ahead of time.
+     explicit arguments) instead of modules or helpers built ahead of time; only
+     expensive-to-reverse decisions (formats, schemas, public interfaces) earn
+     structure up front (§2).
 4. **Verify against reality.** Evidence outranks reading.
    - Library behaviour: read the installed source, cite `path:line`. If the venv is
      missing or stale, sync it (a worker runs `uv sync` or the repo equivalent).
@@ -66,7 +66,8 @@ behind them, for judging trade-offs, is in `engineering-handbook.md`.
 6. **Annotate.**
    - Write in the user's voice, learned from their notes: tone, casing, hedges,
      length. Typically one point and one suggestion in one to three lines.
-   - Each note says why, so the author learns the principle, not just the fix.
+   - Each note says why, so the author learns the principle, not just the fix;
+     for a structure note, the force or signal behind it.
    - Keep dates, counts and file paths for the summary, not the note.
    - One note per point; a later note builds on an earlier one instead of
      repeating it.
@@ -75,7 +76,8 @@ behind them, for judging trade-offs, is in `engineering-handbook.md`.
    - Only comment lines change. Check with `git diff -U0` on the target.
 7. **Summarise.** A shareable themes list to open the discussion:
    - Open with what the code does well.
-   - Each theme is a principle plus its example from this code; bugs and
+   - Each theme is a handbook principle (cite the section, so the author can read
+     the reasoning) plus its example from this code; bugs and
      operations issues as their own themes.
    - Questions that need a product or team decision (time zones, retry policy) go
      in a separate list for the meeting, not in the code.

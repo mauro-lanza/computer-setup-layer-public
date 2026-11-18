@@ -6,10 +6,10 @@ description: Use when asked to review, clean up, simplify, declutter, restructur
 # Repo Review
 
 Judge whether the structure earns its place: pretty is not the test, functional is.
-This skill is the procedure and the checklist. Style rules live in the global
-instruction files (`code-style.md`, `workflow.md`) when installed, with their
-reasoning in `engineering-handbook.md`; the repo's own
-conventions and recorded decisions override both.
+This skill is the procedure and the checklist. The standard is
+`~/.config/opencode/engineering-handbook.md` (not loaded as an instruction: read
+it before step 3); `code-style.md` applies it to agent-written code. The repo's
+own conventions and recorded decisions override both.
 
 ## Invocation
 
@@ -42,10 +42,12 @@ If the user gave constraints or non-goals, they override everything below.
 4. **Re-verify** each finding per `workflow.md`.
 5. **Report** in the format of `references/report-template.md`. Stop.
 6. **Plan.** For restructures give 2-3 options with a before/after tree, the
-   blast radius (references, generated files, CI, docs) and a recommendation.
+   blast radius (references, generated files, CI, docs) and a recommendation
+   that names the forces present now and the cost of moving later (handbook §2).
    Wait for the choice.
 7. **Apply** in phases, each ending with the gate green and docs updated:
-   - Behaviour-preserving moves and renames get their own step, with proof (no-op
+   - Behaviour-preserving moves and renames get their own step (handbook §3: make
+     the change easy, then the easy change), with proof (no-op
      plan, tests, byte-identical output).
    - One rule per step when applying consistency rules.
    - After moves, grep for stale references: docs, CI, editor config, generated
