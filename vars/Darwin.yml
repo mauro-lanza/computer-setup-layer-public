@@ -25,6 +25,10 @@ packages_baseline:
     # files/p10k.zsh uses nerdfont-v3 icons; this is also the terminal font (terminal_font_family) and must be selected in your terminal profile once.
     - font-meslo-lg-nerd-font
 
+# ─── Editor (git core.editor, $EDITOR); keyed by the `editor` answer ─────────
+git_editor: "{{ {'vscode': 'code --wait', 'zed': 'zed --wait', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
+editor_command: "{{ {'vscode': 'code', 'zed': 'zed', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
+
 # Casks safe to `--adopt`; protected-payload casks can lose the existing app on failure.
 packages_cask_adopt:
   - rectangle

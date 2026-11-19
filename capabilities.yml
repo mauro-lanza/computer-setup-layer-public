@@ -11,12 +11,14 @@ capabilities:
     desc: "ansible-lint (required to develop computer-setup itself)"
     packages:
       brew: ansible-lint
+      pacman: ansible-lint
     # adopt_if_present keeps an already-provisioned machine managed without re-selecting.
     adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
   - id: shellcheck
     desc: "shellcheck (required to develop computer-setup itself)"
     packages:
       brew: shellcheck
+      pacman: shellcheck
     adopt_if_present: "{{ homebrew_prefix }}/bin/shellcheck"
   - id: tfenv
     desc: "Terraform version manager (tfenv)"
@@ -31,6 +33,10 @@ capabilities:
     desc: "Colima (lightweight Docker runtime)"
     packages:
       brew: colima
+  - id: podman
+    desc: "Podman with docker-compatible CLI and compose"
+    packages:
+      pacman: podman-docker podman-compose
   # Keg-only, so `mysql_config` is not on PATH; see the README for the build recipe.
   - id: mariadb-connector-c
     desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
@@ -139,6 +145,11 @@ capabilities:
     desc: "Bun (JS runtime & package manager)"
     packages:
       brew: bun
+      aur: bun-bin
+  - id: ollama
+    desc: "Ollama (local LLM runtime, ROCm build)"
+    packages:
+      pacman: ollama-rocm
   - id: duckdb
     desc: "DuckDB (in-process analytical SQL)"
     packages:
@@ -211,6 +222,7 @@ capabilities:
     desc: "Zed editor"
     packages:
       cask: zed
+      pacman: zed
     config:
       - src: zed/settings.json
         dest: "{{ home_dir }}/.config/zed/settings.json"
@@ -218,6 +230,67 @@ capabilities:
     desc: "Discord"
     packages:
       cask: discord
+      pacman: discord
+  - id: vivaldi
+    desc: "Vivaldi browser"
+    packages:
+      pacman: vivaldi
+  - id: vlc
+    desc: "VLC media player"
+    packages:
+      pacman: vlc
+  - id: godot
+    desc: "Godot game engine"
+    packages:
+      pacman: godot
+  - id: qbittorrent
+    desc: "qBittorrent"
+    packages:
+      pacman: qbittorrent
+  - id: nicotine-plus
+    desc: "Nicotine+ (Soulseek client)"
+    packages:
+      pacman: nicotine+
+  - id: proton-vpn
+    desc: "Proton VPN (GTK app)"
+    packages:
+      pacman: proton-vpn-gtk-app
+  - id: gthumb
+    desc: "gThumb (image viewer)"
+    packages:
+      pacman: gthumb
+  - id: filelight
+    desc: "Filelight (disk usage visualiser)"
+    packages:
+      pacman: filelight
+  - id: czkawka
+    desc: "Czkawka (duplicate file finder, GUI)"
+    packages:
+      pacman: czkawka-gui
+  - id: corectrl
+    desc: "CoreCtrl (AMD GPU control)"
+    packages:
+      pacman: corectrl
+  - id: openrgb
+    desc: "OpenRGB (RGB lighting control)"
+    packages:
+      pacman: openrgb-git
+  - id: gparted
+    desc: "GParted (partition editor)"
+    packages:
+      pacman: gparted
+  - id: hunspell-dictionaries
+    desc: "Hunspell spell-check dictionaries (en_US, es)"
+    packages:
+      pacman: hunspell-en_us hunspell-es_any
+  - id: vintage-story
+    desc: "Vintage Story"
+    packages:
+      flatpak: at.vintagestory.VintageStory
+  - id: amethyst-mod-manager
+    desc: "Amethyst Mod Manager"
+    packages:
+      flatpak: io.github.Amethyst.ModManager
   - id: spotify
     desc: "Spotify"
     packages:

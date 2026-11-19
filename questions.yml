@@ -27,20 +27,11 @@ questions:
       - value: vscode
         desc: "Visual Studio Code"
         implies: [vscode]
-        set:
-          git_editor: "code --wait"
-          editor_command: "code"
       - value: zed
         desc: "Zed"
         implies: [zed]
-        set:
-          git_editor: "zed --wait"
-          editor_command: "zed"
       - value: none
         desc: "Leave unmanaged — respect whatever $EDITOR is already set to"
-        set:
-          git_editor: ""
-          editor_command: ""
 
   - id: repositories-dir
     type: path
