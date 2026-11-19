@@ -1,0 +1,751 @@
+#!/usr/bin/env python3
+"""Static dead-code finder: reports functions unreachable from the given entry points."""
+
+import argparse
+import ast
+import builtins
+import os
+import sys
+from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from fnmatch import fnmatchcase
+from pathlib import Path
+
+SKIP_DIRS = {".venv", "venv", ".git", "build", "dist", "__pycache__", "node_modules", "site-packages"}
+TEST_DIR = "tests"
+FUNCTION_KINDS = {"function", "method"}
+FunctionNode = ast.FunctionDef | ast.AsyncFunctionDef
+EXTERNAL = "<external>"  # stands for any builtin or third-party class in an inferred type
+LITERALS = (
+    ast.Constant,
+    ast.JoinedStr,
+    ast.List,
+    ast.Dict,
+    ast.Set,
+    ast.Tuple,
+    ast.ListComp,
+    ast.DictComp,
+    ast.SetComp,
+    ast.GeneratorExp,
+)
+MAX_INFERENCE_DEPTH = 8
+FRAMEWORK_DECORATOR_PREFIXES = ("dbus.service.",)
+NON_FRAMEWORK_MODULES = {"abc", "collections", "dataclasses", "enum", "typing", "typing_extensions"}
+
+
+@dataclass
+class CallSite:
+    module: str
+    scope: str
+    enclosing: list[FunctionNode]
+    call: ast.Call
+
+
+@dataclass
+class Project:
+    root: Path
+    trees: dict[str, ast.Module] = field(default_factory=dict)
+    paths: dict[Path, str] = field(default_factory=dict)  # file -> module name
+    package_of: dict[str, str] = field(default_factory=dict)  # module -> containing package
+    packages: set[str] = field(default_factory=set)
+    kinds: dict[str, str] = field(default_factory=dict)  # qualname -> module|class|function|method
+    defined_in: dict[str, str] = field(default_factory=dict)  # qualname -> module
+    imports: dict[str, dict[str, str]] = field(default_factory=lambda: defaultdict(dict))
+    dunders: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    methods_by_name: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    test_methods_by_name: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    class_bases: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    base_exprs: dict[str, tuple[list[ast.expr], str]] = field(default_factory=dict)  # class -> (bases, scope)
+    subclasses: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
+    framework_methods: dict[str, list[str]] = field(default_factory=lambda: defaultdict(list))
+    function_nodes: dict[str, FunctionNode] = field(default_factory=dict)
+    class_nodes: dict[str, ast.ClassDef] = field(default_factory=dict)
+    attribute_types: dict[tuple[str, str], set[str] | None] = field(default_factory=dict)
+    strong: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
+    weak: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))  # name-match fallback edges
+    call_sites: dict[str, list[CallSite]] | None = None  # called bare name -> calls; built on first use
+
+
+def python_files(root: Path) -> list[Path]:
+    files = []
+    for directory, dirs, names in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS and not d.startswith(".")]
+        files.extend(Path(directory) / n for n in names if n.endswith(".py"))
+    return sorted(files)
+
+
+def module_name(root: Path, file: Path) -> str:
+    parts = list(file.relative_to(root).with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts) or root.name
+
+
+def is_test_module(module: str) -> bool:
+    return TEST_DIR in module.split(".")
+
+
+def absolute_import_base(package: str, node: ast.ImportFrom) -> str:
+    parts = package.split(".") if package else []
+    if node.level:
+        parts = parts[: max(len(parts) - (node.level - 1), 0)]
+    else:
+        parts = []
+    if node.module:
+        parts.append(node.module)
+    return ".".join(parts)
+
+
+def build_project(root: Path) -> Project:
+    project = Project(root)
+    for file in python_files(root):
+        try:
+            with open(file, encoding="utf-8") as f:
+                tree = ast.parse(f.read(), filename=str(file))
+        except (OSError, SyntaxError, ValueError) as e:
+            print(f"Skipping {file}: {e}", file=sys.stderr)
+            continue
+        module = module_name(root, file)
+        project.trees[module] = tree
+        project.paths[file.resolve()] = module
+        project.kinds[module] = "module"
+        project.defined_in[module] = module
+        is_package = file.name == "__init__.py"
+        project.package_of[module] = module if is_package else module.rpartition(".")[0]
+        for i, ch in enumerate(module):
+            if ch == ".":
+                project.packages.add(module[:i])
+    for module, tree in project.trees.items():
+        collect_definitions(project, module, tree, module, "module")
+        collect_imports(project, module, tree)
+    for cls, (exprs, scope) in project.base_exprs.items():
+        linker = Linker(project, project.defined_in[cls], scope, [])
+        for expr in exprs:
+            target = linker.resolve_expr(expr)
+            if target and project.kinds.get(target) == "class":
+                project.class_bases[cls].append(target)
+    for cls in list(project.class_bases):
+        for ancestor in ancestors(project, cls):
+            project.subclasses[ancestor].add(cls)
+    collect_framework_methods(project)
+    for module, tree in project.trees.items():
+        Linker(project, module, module, []).visit(tree)
+    return project
+
+
+def collect_framework_methods(project: Project) -> None:
+    """Record, per class, the methods an external framework calls: registered through a framework decorator, or
+    overriding a base class we cannot see.
+
+    Static analysis cannot know which names an external base defines, so a PascalCase method (the wx/Qt/dbus
+    API style; project methods are snake_case or onCamel) of a class with such a base counts as an override
+    when every project class defining that name has such a base. A dead PascalCase method on such a class
+    is therefore not reported."""
+    external_classes = set()
+    for cls, (exprs, scope) in project.base_exprs.items():
+        linker = Linker(project, project.defined_in[cls], scope, [])
+        if any(is_external_base(linker, expr) for expr in exprs):
+            external_classes.add(cls)
+    for cls, (_, scope) in project.base_exprs.items():
+        linker = Linker(project, project.defined_in[cls], scope, [])
+        for statement in project.class_nodes[cls].body:
+            if not isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            qualname = f"{cls}.{statement.name}"
+            decorated = any(is_framework_decorator(linker, d) for d in statement.decorator_list)
+            definers = project.methods_by_name[statement.name]
+            overrides = (
+                statement.name[0].isupper()
+                and cls in external_classes
+                and all(q.rpartition(".")[0] in external_classes for q in definers)
+            )
+            if decorated or overrides:
+                project.framework_methods[cls].append(qualname)
+
+
+def external_path(linker: "Linker", expr: ast.expr) -> str | None:
+    """Dotted import path of an expression rooted in an import that is not part of the project."""
+    base, attrs = flatten(expr)
+    if not isinstance(base, ast.Name):
+        return None
+    root = linker.lookup(base.id)
+    if root is None or linker.canon(root) is not None:
+        return None
+    return ".".join([root, *attrs])
+
+
+def is_external_base(linker: "Linker", expr: ast.expr) -> bool:
+    path = external_path(linker, expr)
+    return path is not None and path.split(".")[0] not in NON_FRAMEWORK_MODULES
+
+
+def is_framework_decorator(linker: "Linker", decorator: ast.expr) -> bool:
+    path = external_path(linker, decorator.func if isinstance(decorator, ast.Call) else decorator)
+    return path is not None and path.startswith(FRAMEWORK_DECORATOR_PREFIXES)
+
+
+def collect_definitions(project: Project, module: str, node: ast.AST, prefix: str, parent_kind: str) -> None:
+    for child in ast.iter_child_nodes(node):
+        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            qualname = f"{prefix}.{child.name}"
+            kind = "method" if parent_kind == "class" else "function"
+            project.kinds[qualname] = kind
+            project.function_nodes[qualname] = child
+            project.defined_in[qualname] = module
+            if kind == "method":
+                project.methods_by_name[child.name].append(qualname)
+                if is_test_module(module):
+                    project.test_methods_by_name[child.name].append(qualname)
+                if child.name.startswith("__") and child.name.endswith("__"):
+                    project.dunders[prefix].append(qualname)
+            collect_definitions(project, module, child, qualname, "function")
+        elif isinstance(child, ast.ClassDef):
+            qualname = f"{prefix}.{child.name}"
+            project.kinds[qualname] = "class"
+            project.class_nodes[qualname] = child
+            project.defined_in[qualname] = module
+            project.base_exprs[qualname] = (child.bases, prefix)
+            collect_definitions(project, module, child, qualname, "class")
+        else:
+            collect_definitions(project, module, child, prefix, parent_kind)
+
+
+def collect_imports(project: Project, module: str, tree: ast.Module) -> None:
+    table = project.imports[module]
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.asname:
+                    table[alias.asname] = alias.name
+                else:
+                    top = alias.name.split(".")[0]
+                    table[top] = top
+        elif isinstance(node, ast.ImportFrom):
+            base = absolute_import_base(project.package_of[module], node)
+            for alias in node.names:
+                if alias.name != "*":
+                    table[alias.asname or alias.name] = f"{base}.{alias.name}" if base else alias.name
+
+
+def ancestors(project: Project, cls: str) -> set[str]:
+    found, queue = set(), list(project.class_bases.get(cls, ()))
+    while queue:
+        base = queue.pop()
+        if base not in found:
+            found.add(base)
+            queue.extend(project.class_bases.get(base, ()))
+    return found
+
+
+def flatten(node: ast.expr) -> tuple[ast.expr, list[str]]:
+    attrs = []
+    while isinstance(node, ast.Attribute):
+        attrs.append(node.attr)
+        node = node.value
+    attrs.reverse()
+    return node, attrs
+
+
+def binds_name(target: ast.expr, name: str) -> bool:
+    return any(isinstance(e, ast.Name) and e.id == name for e in ast.walk(target))
+
+
+def destructured(target: ast.expr) -> list[ast.expr]:
+    """The names a tuple/list assignment target binds, so `self.a.b = x` does not count as rebinding `self.a`."""
+    if isinstance(target, (ast.Tuple, ast.List)):
+        return [leaf for element in target.elts for leaf in destructured(element)]
+    if isinstance(target, ast.Starred):
+        return destructured(target.value)
+    return [target]
+
+
+def is_self_attribute(node: ast.expr, attr: str) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == attr
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "self"
+    )
+
+
+def annotation_leaves(node: ast.expr) -> list[ast.expr]:
+    """The concrete types named by an annotation, looking through `X | None`, Optional and Union."""
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return annotation_leaves(node.left) + annotation_leaves(node.right)
+    if isinstance(node, ast.Constant) and node.value is None:
+        return []
+    if isinstance(node, ast.Subscript):
+        base, attrs = flatten(node.value)
+        if (attrs[-1] if attrs else getattr(base, "id", None)) in ("Optional", "Union"):
+            members = node.slice.elts if isinstance(node.slice, ast.Tuple) else [node.slice]
+            return [leaf for member in members for leaf in annotation_leaves(member)]
+        return [node.value]
+    return [node]
+
+
+def collect_call_sites(project: Project) -> dict[str, list[CallSite]]:
+    sites = defaultdict(list)
+
+    def walk(module: str, node: ast.AST, scope: str, enclosing: list[FunctionNode]) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.Call):
+                name = child.func.id if isinstance(child.func, ast.Name) else getattr(child.func, "attr", None)
+                if name:
+                    sites[name].append(CallSite(module, scope, enclosing, child))
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                walk(module, child, f"{scope}.{child.name}", [*enclosing, child])
+            elif isinstance(child, ast.ClassDef):
+                walk(module, child, f"{scope}.{child.name}", enclosing)
+            else:
+                walk(module, child, scope, enclosing)
+
+    for module, tree in project.trees.items():
+        walk(module, tree, module, [])
+    return sites
+
+
+class Linker(ast.NodeVisitor):
+    """Adds edges from the owning function (or module-level code) to everything it references."""
+
+    def __init__(self, project: Project, module: str, scope: str, enclosing: list[FunctionNode]):
+        self.project = project
+        self.module = module
+        self.scope = scope  # where names are looked up
+        self.owner = module  # node that receives edges; class bodies belong to the enclosing owner
+        self.enclosing = enclosing
+
+    def at(self, scope: str, enclosing: list[FunctionNode]) -> "Linker":
+        return Linker(self.project, self.project.defined_in[scope], scope, enclosing)
+
+    def params(self) -> dict[str, ast.arg]:
+        found = {}
+        for function in self.enclosing:
+            args = function.args
+            for arg in (*args.posonlyargs, *args.args, *args.kwonlyargs, args.vararg, args.kwarg):
+                if arg:
+                    found[arg.arg] = arg
+        return found
+
+    def canon(self, target: str, depth: int = 0) -> str | None:
+        """Follow re-exports until `target` names something defined in the root."""
+        if target in self.project.kinds or target in self.project.packages:
+            return target
+        module, _, name = target.rpartition(".")
+        if depth < 5 and name in self.project.imports.get(module, {}):
+            return self.canon(self.project.imports[module][name], depth + 1)
+        return None
+
+    def lookup(self, name: str) -> str | None:
+        if name in self.params():
+            return None
+        kinds = self.project.kinds
+        scope = self.scope
+        while True:
+            if f"{scope}.{name}" in kinds and (scope == self.scope or kinds[scope] != "class"):
+                return f"{scope}.{name}"
+            if scope == self.module:
+                return self.project.imports[self.module].get(name)
+            scope = scope.rpartition(".")[0]
+
+    def resolve_chain(self, base: str, attrs: list[str]) -> tuple[str | None, bool]:
+        """Return (qualname, bound): bound is False for plain local variables, True for imports and definitions."""
+        target = self.lookup(base)
+        if target is None:
+            return None, False
+        current = self.canon(target)
+        if current is None:
+            return None, True
+        for attr in attrs:
+            nxt = self.canon(f"{current}.{attr}")
+            if nxt is None:
+                break
+            current = nxt
+        return current, True
+
+    def resolve_expr(self, expr: ast.expr) -> str | None:
+        base, attrs = flatten(expr)
+        return self.resolve_chain(base.id, attrs)[0] if isinstance(base, ast.Name) else None
+
+    def enclosing_class(self) -> str | None:
+        scope = self.scope
+        while scope != self.module:
+            if self.project.kinds.get(scope) == "class":
+                return scope
+            scope = scope.rpartition(".")[0]
+        return None
+
+    def class_member(self, cls: str, name: str) -> str | None:
+        queue, seen = [cls], set()
+        while queue:
+            current = queue.pop(0)
+            if current in seen:
+                continue
+            seen.add(current)
+            if f"{current}.{name}" in self.project.kinds:
+                return f"{current}.{name}"
+            queue.extend(self.project.class_bases[current])
+        return None
+
+    def link(self, target: str | None) -> None:
+        if target in self.project.kinds:
+            self.project.strong[self.owner].add(target)
+
+    def link_modules(self, dotted: str) -> None:
+        parts = dotted.split(".")
+        for i in range(1, len(parts) + 1):
+            name = ".".join(parts[:i])
+            if self.project.kinds.get(name) == "module":
+                self.link(name)
+
+    def link_method_call(self, receiver: ast.expr, name: str) -> None:
+        """Link `receiver.name` to the methods the receiver's inferred classes define, else to every method of that name."""
+        types = self.infer(receiver, 0)
+        if not types:
+            self.project.weak[self.owner].update(self.project.methods_by_name.get(name, ()))
+            return
+        for cls in types - {EXTERNAL}:
+            for owner in (cls, *self.project.subclasses.get(cls, ())):
+                self.link(self.class_member(owner, name))
+        # test doubles replace the inferred class without being named in the code
+        self.project.weak[self.owner].update(self.project.test_methods_by_name.get(name, ()))
+
+    def infer(self, expr: ast.expr, depth: int) -> set[str] | None:
+        """Classes `expr` is an instance of (EXTERNAL for builtin and third-party ones); None when unknown."""
+        if depth > MAX_INFERENCE_DEPTH:
+            return None
+        if isinstance(expr, ast.Constant) and expr.value is None:
+            return set()  # says nothing: the value is usually replaced later
+        if isinstance(expr, LITERALS):
+            return {EXTERNAL}
+        if isinstance(expr, ast.Call):
+            return self.infer_call(expr, depth)
+        if isinstance(expr, ast.Name) and expr.id == "self":
+            cls = self.enclosing_class()
+            return {cls} if cls else None
+        if isinstance(expr, ast.Name) and expr.id != "cls":
+            params = self.params()
+            if expr.id in params:
+                if params[expr.id].annotation is None:
+                    return self.constructor_argument_types(expr.id, depth)
+                return self.annotation_types(params[expr.id].annotation)
+            return self.local_types(expr.id, depth)
+        if isinstance(expr, ast.Attribute):
+            receiver = self.infer(expr.value, depth + 1)
+            if not receiver or EXTERNAL in receiver:
+                return None
+            results = [self.attribute_types(cls, expr.attr) for cls in receiver]
+            return None if None in results else set().union(*results)
+        return None
+
+    def constructor_argument_types(self, name: str, depth: int) -> set[str] | None:
+        """Types of the argument every call that constructs the enclosing class passes for `name`."""
+        cls = self.enclosing_class()
+        if cls is None or self.enclosing[0].name != "__init__" or len(self.enclosing) != 1:
+            return None
+        if self.project.call_sites is None:
+            self.project.call_sites = collect_call_sites(self.project)
+        positional = [a.arg for a in self.enclosing[0].args.args[1:]]
+        results = []
+        for site in self.project.call_sites.get(cls.rpartition(".")[2], ()):
+            caller = Linker(self.project, site.module, site.scope, site.enclosing)
+            if caller.resolve_expr(site.call.func) != cls:
+                continue
+            keyword = next((k.value for k in site.call.keywords if k.arg == name), None)
+            if keyword is None and name in positional and positional.index(name) < len(site.call.args):
+                keyword = site.call.args[positional.index(name)]
+            if keyword is None or isinstance(keyword, ast.Starred):
+                return None
+            results.append(caller.infer(keyword, depth + 1))
+        if not results or None in results:
+            return None
+        return set().union(*results) or None
+
+    def attribute_types(self, cls: str, attr: str) -> set[str] | None:
+        """Types of `cls.attr`: an assigned instance attribute, else a property's return annotation."""
+        types = self.self_attribute_types(cls, attr)
+        if types is not None:
+            return types
+        member = self.class_member(cls, attr)
+        node = self.project.function_nodes.get(member) if member else None
+        if node and any(isinstance(d, ast.Name) and d.id == "property" for d in node.decorator_list):
+            return self.at(member.rpartition(".")[0], []).annotation_types(node.returns)
+        return None
+
+    def infer_call(self, call: ast.Call, depth: int) -> set[str] | None:
+        base, attrs = flatten(call.func)
+        if not isinstance(base, ast.Name):
+            return None
+        if base.id in ("self", "cls") and len(attrs) == 1 and (owner := self.enclosing_class()):
+            member = self.class_member(owner, attrs[0])
+            return {member} if member and self.project.kinds[member] == "class" else None
+        target, bound = self.resolve_chain(base.id, attrs)
+        if target is not None:
+            return {target} if self.project.kinds[target] == "class" else None
+        builtin = not bound and hasattr(builtins, base.id)
+        if not (bound or builtin):
+            return None
+        name = attrs[-1] if attrs else base.id
+        if name in ("deepcopy", "copy") and call.args:
+            return self.infer(call.args[0], depth + 1)
+        # an external function may return anything, an external class is an external instance
+        is_class = name[:1].isupper() or (builtin and isinstance(getattr(builtins, base.id), type))
+        return {EXTERNAL} if is_class else None
+
+    def local_types(self, name: str, depth: int) -> set[str] | None:
+        results = []
+        for function in self.enclosing:
+            for node in ast.walk(function):
+                if isinstance(node, ast.Assign):
+                    for target in node.targets:
+                        if isinstance(target, ast.Name) and target.id == name:
+                            results.append(self.infer(node.value, depth + 1))
+                        elif binds_name(target, name):
+                            results.append(None)
+                elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and node.target.id == name:
+                    results.append(self.annotation_types(node.annotation))
+                elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)) and binds_name(node.target, name):
+                    results.append(None)
+                elif isinstance(node, ast.withitem) and node.optional_vars and binds_name(node.optional_vars, name):
+                    results.append(None)
+                elif isinstance(node, ast.ExceptHandler) and node.name == name:
+                    results.append(None)
+        if not results or None in results:
+            return None
+        return set().union(*results) or None
+
+    def self_attribute_types(self, cls: str, attr: str) -> set[str] | None:
+        cache = self.project.attribute_types
+        if (cls, attr) in cache:
+            return cache[cls, attr]
+        cache[cls, attr] = None  # a cycle such as self.a = self.a.b() stays unknown
+        results = []
+        for statement in self.project.class_nodes[cls].body:
+            if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+                if statement.target.id == attr:
+                    results.append(self.at(cls, []).annotation_types(statement.annotation))
+            elif isinstance(statement, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                linker = self.at(f"{cls}.{statement.name}", [statement])
+                for node in ast.walk(statement):
+                    if isinstance(node, ast.Assign):
+                        for target in node.targets:
+                            if is_self_attribute(target, attr):
+                                results.append(linker.infer(node.value, 1))
+                            elif any(is_self_attribute(t, attr) for t in destructured(target)):
+                                results.append(None)
+                    elif isinstance(node, ast.AnnAssign) and is_self_attribute(node.target, attr):
+                        results.append(linker.annotation_types(node.annotation))
+        types = None if not results or None in results else set().union(*results) or None
+        cache[cls, attr] = types
+        return types
+
+    def annotation_types(self, annotation: ast.expr | None) -> set[str] | None:
+        if annotation is None:
+            return None
+        if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+            try:
+                annotation = ast.parse(annotation.value, mode="eval").body
+            except SyntaxError:
+                return None
+        types = set()
+        for leaf in annotation_leaves(annotation):
+            if isinstance(leaf, ast.Constant):
+                found = self.annotation_types(leaf) if isinstance(leaf.value, str) else None
+            else:
+                found = self.class_types(leaf)
+            if found is None:
+                return None
+            types |= found
+        return types or None
+
+    def class_types(self, expr: ast.expr) -> set[str] | None:
+        base, attrs = flatten(expr)
+        if not isinstance(base, ast.Name) or (attrs[-1] if attrs else base.id) in ("Any", "object"):
+            return None
+        target, bound = self.resolve_chain(base.id, attrs)
+        if target is not None:
+            return {target} if self.project.kinds[target] == "class" else None
+        return {EXTERNAL} if bound or hasattr(builtins, base.id) else None
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if isinstance(node.ctx, ast.Load):
+            self.link(self.resolve_chain(node.id, [])[0])
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        base, attrs = flatten(node)
+        if not isinstance(base, ast.Name):
+            self.visit(base)
+            self.link_method_call(node.value, attrs[-1])
+            return
+        if base.id in ("self", "cls") and (cls := self.enclosing_class()):
+            member = self.class_member(cls, attrs[0])
+            self.link(member)
+            if member is None or len(attrs) > 1:
+                self.link_method_call(node.value, attrs[-1])
+            return
+        target, bound = self.resolve_chain(base.id, attrs)
+        if target is not None:
+            self.link(target)
+        elif not bound:
+            self.link_method_call(node.value, attrs[-1])
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            self.link_modules(alias.name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        base = absolute_import_base(self.project.package_of[self.module], node)
+        self.link_modules(base)
+        for alias in node.names:
+            self.link_modules(f"{base}.{alias.name}")
+
+    def visit_FunctionDef(self, node: FunctionNode) -> None:
+        for decorator in node.decorator_list:
+            self.visit(decorator)
+        self.visit(node.args)
+        if node.returns:
+            self.visit(node.returns)
+        outer = self.scope, self.owner
+        self.scope = self.owner = f"{self.scope}.{node.name}"
+        self.enclosing.append(node)
+        for statement in node.body:
+            self.visit(statement)
+        self.enclosing.pop()
+        self.scope, self.owner = outer
+
+    visit_AsyncFunctionDef = visit_FunctionDef
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        for expr in (*node.decorator_list, *node.bases, *(k.value for k in node.keywords)):
+            self.visit(expr)
+        outer = self.scope
+        self.scope = f"{outer}.{node.name}"
+        for statement in node.body:
+            self.visit(statement)
+        self.scope = outer
+
+
+def resolve_entries(project: Project, specs: list[str]) -> list[str]:
+    entries = []
+    for spec in specs:
+        path, _, qualname = spec.partition("::")
+        candidates = [(project.root / path).resolve(), Path(path).resolve()]
+        module = next((project.paths[c] for c in candidates if c in project.paths), None)
+        if module is None:
+            raise SystemExit(f"error: entry point file not found under {project.root}: {spec}")
+        entry = f"{module}.{qualname}" if qualname else module
+        if entry not in project.kinds:
+            raise SystemExit(f"error: entry point not found: {spec}")
+        entries.append(entry)
+    return entries
+
+
+def pattern_entries(project: Project, patterns: list[str]) -> list[str]:
+    """Functions whose bare or qualified name matches a glob; they are called from outside the code."""
+    entries = []
+    for pattern in patterns:
+        matches = [
+            q
+            for q, kind in project.kinds.items()
+            if kind in FUNCTION_KINDS and (fnmatchcase(q.rpartition(".")[2], pattern) or fnmatchcase(q, pattern))
+        ]
+        if not matches:
+            print(f"warning: --ignore-pattern {pattern!r} matches no function", file=sys.stderr)
+        entries.extend(matches)
+    return entries
+
+
+def fixture_entries(project: Project) -> list[str]:
+    """Pytest fixtures are called by the framework, by parameter name."""
+    entries = []
+    for qualname, node in project.function_nodes.items():
+        for decorator in node.decorator_list:
+            target = decorator.func if isinstance(decorator, ast.Call) else decorator
+            if (isinstance(target, ast.Attribute) and target.attr == "fixture") or (
+                isinstance(target, ast.Name) and target.id == "fixture"
+            ):
+                entries.append(qualname)
+                break
+    return entries
+
+
+def reachable(project: Project, entries: list[str], use_fallback: bool) -> set[str]:
+    seen: set[str] = set()
+    queue = deque(entries)
+    while queue:
+        node = queue.popleft()
+        if node in seen:
+            continue
+        seen.add(node)
+        queue.extend(project.strong[node])
+        if use_fallback:
+            queue.extend(project.weak[node])
+        if project.kinds[node] == "class":
+            queue.extend(project.dunders[node])
+            queue.extend(project.framework_methods[node])
+            queue.extend(project.class_bases[node])
+    return seen
+
+
+def display(project: Project, qualname: str) -> str:
+    module = project.defined_in[qualname]
+    file = next(p for p, m in project.paths.items() if m == module)
+    return f"{file.relative_to(project.root.resolve())}::{qualname[len(module) + 1 :]}"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Find functions unreachable from the given entry points")
+    parser.add_argument("directory", help="Root directory to analyze")
+    parser.add_argument(
+        "--functions",
+        nargs="+",
+        required=True,
+        help="Entry points: path/to/file.py::qualname, or path/to/file.py for that module's module-level code",
+    )
+    parser.add_argument(
+        "--ignore-pattern",
+        action="append",
+        default=[],
+        help="Glob on a function's bare or qualified name; matches count as extra entry points (repeatable)",
+    )
+    parser.add_argument("--output", help="Output file for results")
+    args = parser.parse_args()
+
+    project = build_project(Path(args.directory).resolve())
+    entries = (
+        resolve_entries(project, args.functions)
+        + pattern_entries(project, args.ignore_pattern)
+        + fixture_entries(project)
+    )
+    confident = reachable(project, entries, use_fallback=False)
+    possible = reachable(project, entries, use_fallback=True)
+
+    functions = {q for q, k in project.kinds.items() if k in FUNCTION_KINDS}
+    orphans = sorted(display(project, q) for q in functions - possible)
+    low_confidence = sorted(display(project, q) for q in (possible - confident) & functions)
+
+    lines = [
+        f"Files: {len(project.trees)}, entry points: {len(entries)}",
+        f"Functions: {len(functions)}, reachable: {len(functions & possible)} (confident: {len(functions & confident)})",
+        f"\nOrphans ({len(orphans)}):",
+        *(f"  {o}" for o in orphans),
+        f"\nLow-confidence (kept alive only by name match) ({len(low_confidence)}):",
+        *(f"  {o}" for o in low_confidence),
+    ]
+    source_entries = [e for e in entries if not is_test_module(project.defined_in[e])]
+    if len(source_entries) < len(entries):
+        # strict on both sides: a name-match edge from source must not hide a function that only tests call
+        from_source = reachable(project, source_entries, use_fallback=False)
+        tests_only = sorted(
+            display(project, q)
+            for q in (confident - from_source) & functions
+            if not is_test_module(project.defined_in[q])
+        )
+        lines += [f"\nReachable only from tests ({len(tests_only)}):", *(f"  {o}" for o in tests_only)]
+    print("\n".join(lines))
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+
+if __name__ == "__main__":
+    main()

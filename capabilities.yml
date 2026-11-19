@@ -199,6 +199,12 @@ capabilities:
       - src: scripts/check_merged_branches
         dest: "{{ home_dir }}/.local/bin/check_merged_branches"
         executable: true
+  - id: orphan-finder
+    desc: "orphan_finder (report Python functions unreachable from given entry points)"
+    config:
+      - src: scripts/orphan_finder
+        dest: "{{ home_dir }}/.local/bin/orphan_finder"
+        executable: true
   - id: 1password
     desc: "1Password"
     packages:
