@@ -1,10 +1,4 @@
-{#
-  Shell + Jinja hazard: this script uses bash array-length syntax `${#name[@]}`,
-  and Jinja reads `{#` as a comment opener. The body is therefore wrapped in
-  {% raw %} blocks, and only the templated config block below sits outside them.
-  Keep it that way when editing.
-#}
-{% raw %}#!/bin/bash
+#!/bin/bash
 # Checks which local branches have associated PRs that were already merged,
 # deletes them, then reports branches with unpushed commits.
 #
@@ -23,17 +17,13 @@
 #     `${arr[@]+"${arr[@]}"}` guard, which expands to nothing when unset/empty.
 
 set -euo pipefail
-{% endraw %}
-# Templated defaults. The env vars exist so the scheduled agent — and anyone
-# debugging it — can retarget the script without re-running Ansible.
-DEFAULT_BRANCH_FALLBACK="${CHECK_MERGED_BRANCHES_DEFAULT_BRANCH:-{{ git_default_branch }}}"
-# `| expanduser`: repositories_base_dir is answered by a human (the
-# repositories-dir question) and "~/Projects" is the natural answer. Ansible
-# expands `~` wherever a module consumes a path, so that answer is valid
-# everywhere else — but `~` does not expand inside a quoted shell assignment,
-# and the literal string would make every unattended run exit 1.
-BASE_DIR="${CHECK_MERGED_BRANCHES_BASE_DIR:-{{ repositories_base_dir | expanduser }}}"
-{% raw %}
+
+# Fallback when origin/HEAD is unset: the engine writes init.defaultBranch from git_default_branch.
+DEFAULT_BRANCH_FALLBACK="${CHECK_MERGED_BRANCHES_DEFAULT_BRANCH:-$(git config --get init.defaultBranch || true)}"
+DEFAULT_BRANCH_FALLBACK="${DEFAULT_BRANCH_FALLBACK:-main}"
+# Must be absolute: `~` does not expand inside a quoted value. The shell env and the agent args supply it expanded.
+BASE_DIR="${CHECK_MERGED_BRANCHES_BASE_DIR:-}"
+
 AUTO_DELETE=0
 ALL_REPOS=0
 QUIET=0
@@ -298,6 +288,11 @@ if [[ $ALL_REPOS -eq 0 ]]; then
   exit $?
 fi
 
+if [[ -z "$BASE_DIR" ]]; then
+  echo "Error: --all-repos needs a base directory: pass --base-dir or set CHECK_MERGED_BRANCHES_BASE_DIR." >&2
+  exit 2
+fi
+
 if [[ ! -d "$BASE_DIR" ]]; then
   echo "Error: base directory '$BASE_DIR' does not exist." >&2
   exit 1
@@ -394,4 +389,3 @@ if [[ ${#failed_repos[@]} -gt 0 ]]; then
     echo "    - $repo"
   done
 fi
-{% endraw %}

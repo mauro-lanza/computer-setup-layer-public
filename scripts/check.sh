@@ -156,6 +156,20 @@ if [[ -n "$missing" ]]; then
 fi
 echo "  ok  every opencode file has a config entry"
 
+echo "==> Scripts"
+command -v shellcheck >/dev/null || { echo "ERROR: shellcheck not found" >&2; exit 1; }
+for f in files/scripts/*; do
+    read -r shebang < "$f"
+    if [[ "$shebang" == *python* ]]; then
+        "$PY" -m py_compile "$f"
+    else
+        bash -n "$f"
+        shellcheck "$f"
+    fi
+    echo "  ok  $f"
+done
+find files/scripts -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
+
 echo "==> Shell-policy and usage-report plugins"
 bun test files/opencode/plugins/shell-policy files/opencode/plugins/usage-report
 

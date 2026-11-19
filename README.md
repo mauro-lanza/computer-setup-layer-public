@@ -118,7 +118,7 @@ its own platform, and hold everything that differs:
 |---|---|---|
 | Packages | `packages_baseline.brew`/`.cask`, `packages_cask_adopt` | `packages_baseline.pacman` |
 | zsh | `zsh_theme`, `zsh_plugins`, `zsh_path_prepend`, `zsh_env` (Homebrew paths) | `zsh_theme`, `zsh_plugins` (`/usr/share` paths) |
-| Other | `extension_managers` (VS Code), `macos_defaults`, `scheduled_agents` | `shell_login_shell: /usr/bin/zsh` |
+| Other | `extension_managers` (VS Code), `macos_defaults`, `scheduled_agents`, `git_editor`/`editor_command` | `shell_login_shell: /usr/bin/zsh`, `git_editor`/`editor_command` (Zed is `zeditor`) |
 
 So `zshrc.j2` and the snippets carry no platform conditions: they render plain
 values, and each machine gets a file naming only its own paths. A capability

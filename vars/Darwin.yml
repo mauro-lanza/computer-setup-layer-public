@@ -71,6 +71,8 @@ scheduled_agents:
       - --all-repos
       - --auto-delete
       - --quiet
+      - --base-dir
+      - "{{ repositories_base_dir | expanduser }}"
     hour: 8
     minute: 30
     requires_capability: check-merged-branches

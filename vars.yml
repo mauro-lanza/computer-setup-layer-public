@@ -13,6 +13,8 @@ shell_config_files:
 
 # ─── git (git role) ──────────────────────────────────────────────────────────
 git_default_branch: main
+zsh_env:
+  CHECK_MERGED_BRANCHES_BASE_DIR: "{{ repositories_base_dir | expanduser }}"
 git_config_sections:
   pull:
     rebase: "true"
