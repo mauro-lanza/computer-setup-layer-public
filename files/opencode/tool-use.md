@@ -45,6 +45,21 @@ match) and batching (tool calls run in parallel) are not reasons. Show the scrip
 then verify the result with `grep`/`read` rather than the exit code. For one to
 three files, use `edit`.
 
+## Worktrees and scratch files
+
+- Create a worktree only when parallel writers would share files or the user
+  asks. Use `worktree_create` (it lands in `../worktrees/<name>` next to the
+  repo), never `git worktree add` into `/tmp` or the session temp dir. Remove it
+  with `worktree_remove` once its changes are merged back; if its folder was
+  deleted by hand, run `git worktree prune`.
+- Brief a worker with the worktree's absolute path and have it run every
+  command there, not in the main checkout.
+- A new worktree lacks the main checkout's untracked and ignored files
+  (`.env`, virtualenvs, `node_modules`, local scripts and tests): symlink them
+  from the main checkout before running checks.
+- Scratch files go in the session temp dir; delete the ones you created before
+  finishing.
+
 ## Side effects
 
 - Reads through `gcloud`, `gh`, `bq` or `terraform plan` are fine when auth is
