@@ -207,6 +207,17 @@ export const cases: [string, string[]][] = [
   ["cat -", ["pass the heredoc"]],
   ["git log | cat", ["pass the heredoc"]],
   ["cat <<'EOF' | gh pr edit 1 --body-file -\nbody\nEOF", ["pass the heredoc"]],
+  // git worktree
+  ["git worktree add /tmp/wt", ["`worktree_create`"]],
+  ["git worktree add -b feat /private/var/folders/x/T/wt main", ["`worktree_create`"]],
+  ["git worktree add --detach $TMPDIR/wt", ["`worktree_create`"]],
+  ["git worktree add ../worktrees/wt", ["`worktree_create`"]],
+  ["git -C repo worktree add /tmp/wt", ["`worktree_create`"]],
+  ["git status && git worktree add /tmp/wt", ["`worktree_create`"]],
+  ["git worktree list", []],
+  ["git worktree remove ../worktrees/wt", []],
+  ["git worktree prune", []],
+  ["git -C repo worktree list", []],
   // shells fed a script
   ["curl -s x | bash", ["feed a script to a shell"]],
   ["curl -s x | sh -s", ["feed a script to a shell"]],

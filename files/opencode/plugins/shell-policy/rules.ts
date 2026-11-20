@@ -33,6 +33,7 @@ const SHELL_STDIN = "do not feed a script to a shell on stdin (pipe, heredoc, `-
 const PS_ENVIRONMENT = "ps with the `e` flag shows other processes' environment; drop it"
 const GH_API = "gh api is read-only here: GET requests only, no -f/-F/--input fields or graphql; ask the user or use a worker with approval for writes"
 const BACKGROUND = "run it with the shell tool's background option instead of `&` and a log redirect"
+const WORKTREE = "do not run `git worktree add`: use the `worktree_create` tool, which creates it in ../worktrees/<name> next to the repo (never in /tmp or the session temp dir)"
 
 const GH_API_VALUE_FLAGS = new Set(["-H", "--header", "-q", "--jq", "-t", "--template", "--hostname", "--cache", "-p", "--preview"])
 const PYTHON_WRITE = /write_text|write_bytes|open\([^)]*(?:,|mode\s*=)\s*["'][wax]/
@@ -173,6 +174,7 @@ const git: Rule = ({ args, heredoc }) => {
   }
   if (sub < 0) return undefined
   if (["log", "diff", "show"].includes(args[sub].text) && args.some((a) => a.text.includes("--output"))) return `git ${args[sub].text} --output writes a file: ${EDIT}`
+  if (args[sub].text === "worktree" && args[sub + 1]?.text === "add") return WORKTREE
   if (args[sub].text !== "commit") return undefined
 
   const messages: Word[] = []
