@@ -115,6 +115,10 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/shell.ts"
       - src: opencode/plugins/usage-report/MIGRATION.md
         dest: "{{ home_dir }}/.config/opencode/plugins/usage-report/MIGRATION.md"
+      - src: opencode/plugins/context-indicator/tui.tsx
+        dest: "{{ home_dir }}/.config/opencode/plugins/context-indicator/tui.tsx"
+      - src: opencode/plugins/context-indicator/indicator.ts
+        dest: "{{ home_dir }}/.config/opencode/plugins/context-indicator/indicator.ts"
       - src: opencode/skills/repo-review/SKILL.md
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/SKILL.md"
       - src: opencode/skills/repo-review/references/criteria.md

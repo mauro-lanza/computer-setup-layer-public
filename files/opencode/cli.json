@@ -11,5 +11,11 @@
   },
   "session": {
     "verbosity": "medium"
-  }
+  },
+  "plugins": [
+    {
+      "package": "./plugins/context-indicator",
+      "options": { "warn": 100000, "alert": 150000 }
+    }
+  ]
 }

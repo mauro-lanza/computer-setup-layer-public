@@ -170,8 +170,8 @@ for f in files/scripts/*; do
 done
 find files/scripts -name __pycache__ -prune -exec rm -rf {} + 2>/dev/null || true
 
-echo "==> Shell-policy and usage-report plugins"
-bun test files/opencode/plugins/shell-policy files/opencode/plugins/usage-report
+echo "==> Shell-policy, usage-report and context-indicator plugins"
+bun test files/opencode/plugins/shell-policy files/opencode/plugins/usage-report files/opencode/plugins/context-indicator
 
 echo
 echo "Checks passed"
