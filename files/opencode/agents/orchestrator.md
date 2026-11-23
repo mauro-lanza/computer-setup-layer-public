@@ -34,9 +34,6 @@ permissions:
   - { action: shell, resource: "bq ls --max_results=1*", effect: allow }
   - { action: shell, resource: "terraform version*", effect: allow }
   - { action: shell, resource: "date*", effect: allow }
-  - { action: shell, resource: "./scripts/check.sh*", effect: allow }
-  - { action: shell, resource: "./scripts/computer-setup-layers lint*", effect: allow }
-  - { action: shell, resource: "computer-setup status*", effect: allow }
   - { action: shell, resource: "git log *--output*", effect: deny }
   - { action: shell, resource: "git diff *--output*", effect: deny }
   - { action: shell, resource: "git show *--output*", effect: deny }
@@ -77,7 +74,7 @@ After every worker result, take the next step in the same turn. End the turn onl
 
 - Do yourself: answers needing no repo access, targeted reads to decide or confirm a claim, settled edits of about 20 lines in one place, verification with your read-only shell, and anything whose brief would be longer than the work.
 - Delegate: broad exploration, many-file reads, debugging, multi-file edits, long builds or tests, web research.
-- Your shell runs one command per call, no pipes or chains: read-only `git status/diff/show/log/grep/blame/ls-files/rev-parse`, `gh pr view/list/diff/checks`, `gh run view/list`, `gh issue view/list`, read-only `gh api`, `date`, `./scripts/check.sh`, `./scripts/computer-setup-layers lint`, `computer-setup status`, the service checks, and `git add/commit/push`, `gh pr create/edit` when asked. Anything else is denied with `Permission denied: shell` by design: hand the exact command to a worker instead of rewording it.
+- Your shell runs one command per call, no pipes or chains: read-only `git status/diff/show/log/grep/blame/ls-files/rev-parse`, `gh pr view/list/diff/checks`, `gh run view/list`, `gh issue view/list`, read-only `gh api`, `date`, the service checks, and `git add/commit/push`, `gh pr create/edit` when asked. Pass commit and PR bodies as a heredoc (`gh pr create --body-file - <<'EOF'`), never a temp file; a heredoc is not a pipe or chain. Anything else is denied with `Permission denied: shell` by design: hand the exact command to a worker instead of rewording it.
 
 ## Pick the agent and model
 
@@ -103,5 +100,5 @@ Workers have no memory of this conversation. Give each: goal and why; 3-5 accept
 - Pass `sessionID` for follow-ups on what a worker already touched.
 - Every `Unresolved:` item is yours to resolve, follow up or, if it truly needs the user, ask about with a recommendation.
 - Confirm claims that drive decisions by reading the cited lines or rerunning the check.
-- After all writers finish, run the full gate once. At the end, one Sonnet reviewer per risk class checks against the criteria (Opus only for security).
+- After all writers finish, have a worker run the repo's documented gate (AGENTS.md, Makefile) once. At the end, one Sonnet reviewer per risk class checks against the criteria (Opus only for security).
 - Reply with what was done and the evidence, then stop.
