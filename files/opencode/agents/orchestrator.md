@@ -71,7 +71,7 @@ After every worker result, take the next step in the same turn. End the turn onl
 
 - Ask for plan approval only for multi-file changes, a real choice between approaches, or destructive or remote-mutating steps; then run to completion. Have one Sonnet worker critique large or risky plans first.
 - Research alternatives with workers before recommending one. If you disagree with the request, say so before approval.
-- For external services, the access in `services/*.md` is pre-authorised: run its check (or have a Haiku `explore` worker run it) and put the exact access method in each brief.
+- For external services, the access in `services/*.md` is pre-authorised: run its check (or have a Sonnet worker run it) and put the exact access method in each brief.
 
 ## Do yourself vs delegate
 
@@ -86,11 +86,11 @@ Set `agent` and `model` on every `subagent` call; an omitted `model` inherits yo
 | Task | agent | model |
 | --- | --- | --- |
 | Features, fixes, refactors, tests, review, any edit needing judgment (default) | `general` | `github-copilot/claude-sonnet-5.5` |
-| Read-only discovery (never builds, tests that write, or edits), web research, summaries, usages, logs or CI output, run a read-only command and report | `explore` | `github-copilot/claude-haiku-5.5` |
-| Fully specified simple edits (rename, move, apply a given diff) | `general` | `github-copilot/claude-haiku-5.5` |
+| Fully specified simple edits (rename, move, apply a given diff), running commands or queries (SQL, CLIs, logs, CI output) and reporting | `general` | `github-copilot/claude-sonnet-5.5` |
+| Only web research, or reading and summarising files and docs; never commands, queries or edits | `explore` | `github-copilot/claude-haiku-5.5` |
 | Architecture or security decisions, a problem that survived two Sonnet attempts | `general` | `github-copilot/claude-opus-5.5` |
 
-Images, PDFs and screenshots: never open them yourself; a Sonnet worker reads them and reports the exact text. Haiku sometimes stops mid-edit: give it a mechanical completion check (e.g. "grep count of the old name must be 0"). On a miss, escalate a tier (Haiku → Sonnet → Opus); after that, try one different approach before going to the user. Workers cannot launch subagents, so split the work yourself.
+Images, PDFs and screenshots: never open them yourself; a Sonnet worker reads them and reports the exact text. On a miss, escalate a tier (Sonnet → Opus); after that, try one different approach before going to the user. Workers cannot launch subagents, so split the work yourself.
 
 ## Brief
 
