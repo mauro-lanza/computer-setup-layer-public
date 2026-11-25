@@ -18,6 +18,17 @@
 
 set -euo pipefail
 
+# Unattended runs must fail fast instead of hanging on a prompt or a dead network (perl: macOS has no `timeout`).
+export GIT_TERMINAL_PROMPT=0 GH_PROMPT_DISABLED=1
+export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=15"
+with_timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+
+# Whole-run watchdog: a killed run must say so in the log, since launchd only records the exit.
+WATCHDOG_SECONDS=1800
+( exec perl -e '$|=1; sleep shift; print STDERR "Error: watchdog timeout, killing run.\n"; kill "TERM", getppid' "$WATCHDOG_SECONDS" ) &
+WATCHDOG_PID=$!
+trap 'kill "$WATCHDOG_PID" 2>/dev/null || true' EXIT
+
 # Fallback when origin/HEAD is unset: the engine writes init.defaultBranch from git_default_branch.
 DEFAULT_BRANCH_FALLBACK="${CHECK_MERGED_BRANCHES_DEFAULT_BRANCH:-$(git config --get init.defaultBranch || true)}"
 DEFAULT_BRANCH_FALLBACK="${DEFAULT_BRANCH_FALLBACK:-main}"
@@ -64,7 +75,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Unattended runs exit 0 when gh is unauthenticated (keychain locked), since that is a precondition, not a failure.
-if ! gh auth status &>/dev/null; then
+if ! with_timeout 30 gh auth status &>/dev/null; then
   if [[ -t 2 ]]; then
     echo "Error: GitHub CLI is not authenticated." >&2
     echo "Run: gh auth login" >&2
@@ -107,7 +118,7 @@ process_repo() {
   # history either. The ancestor check below fetches them per PR instead.
   # Non-fatal: an offline run should still work off whatever's already in the
   # local object database, just less reliably.
-  if ! git fetch --prune 2>/dev/null; then
+  if ! with_timeout 60 git fetch --prune 2>/dev/null; then
     echo "Warning: git fetch failed, proceeding with local data only." >&2
   fi
 
@@ -169,7 +180,7 @@ process_repo() {
     # headRefOid is therefore usually absent from the local object database (see
     # the fetch note above), so it's pulled from GitHub's refs/pull/N/head on
     # demand, per PR, right before the ancestor check needs it.
-    if ! pr_info=$(gh pr list --head "$branch" --state merged \
+    if ! pr_info=$(with_timeout 30 gh pr list --head "$branch" --state merged \
       --json number,title,mergedAt,headRefOid \
       --jq '.[] | "\(.headRefOid)\t\(.number)\t#\(.number) \(.title) (merged \(.mergedAt | split("T")[0]))"' 2>/dev/null); then
       echo "  ⚠  $branch — failed to query PR status, skipping"
@@ -187,7 +198,7 @@ process_repo() {
         break
       fi
       if ! git cat-file -e "${pr_oid}^{commit}" 2>/dev/null; then
-        git fetch --quiet origin "refs/pull/${pr_num}/head" 2>/dev/null || true
+        with_timeout 60 git fetch --quiet origin "refs/pull/${pr_num}/head" 2>/dev/null || true
       fi
       if git cat-file -e "${pr_oid}^{commit}" 2>/dev/null \
         && git merge-base --is-ancestor "$local_tip" "$pr_oid" 2>/dev/null; then
@@ -347,6 +358,9 @@ for repo in ${repos[@]+"${repos[@]}"}; do
     *github.com*) ;;
     *) skipped=$((skipped + 1)); continue ;;
   esac
+
+  # Always on stderr, even with --quiet, so a hang shows which repo it was in.
+  echo "==> ${repo#"$BASE_DIR"/}" >&2
 
   # Subshell so a `set -e` abort or `cd` stays inside one repo. --quiet buffers
   # output per repo, which is why it cannot prompt.

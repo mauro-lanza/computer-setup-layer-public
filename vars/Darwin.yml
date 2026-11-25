@@ -63,7 +63,7 @@ zsh_env:
   HOMEBREW_NO_ANALYTICS: "1"
 
 # ─── Scheduled jobs (scheduled_agents role, launchd) ─────────────────────────
-# Needs check-merged-branches; 08:30 runs before the 09:00 upgrade. --auto-delete is required because a LaunchAgent has no terminal.
+# Needs check-merged-branches; runs after the network is back from wake. --auto-delete is required because a LaunchAgent has no terminal.
 scheduled_agents:
   - label: com.tenon.branch-cleanup
     program: "{{ home_dir }}/.local/bin/check_merged_branches"
@@ -73,8 +73,8 @@ scheduled_agents:
       - --quiet
       - --base-dir
       - "{{ repositories_base_dir | expanduser }}"
-    hour: 8
-    minute: 30
+    hour: 11
+    minute: 15
     requires_capability: check-merged-branches
 
 # ─── macOS system defaults (macos role) ──────────────────────────────────────
