@@ -1,13 +1,13 @@
 #!/usr/bin/python3
-# <bitbar.title>computer-setup</bitbar.title>
+# <bitbar.title>tenon</bitbar.title>
 # <bitbar.desc>Machine configuration: drift, sync health, and live run progress.</bitbar.desc>
 # <bitbar.dependencies>python3</bitbar.dependencies>
 # <swiftbar.refreshOnOpen>true</swiftbar.refreshOnOpen>
 #
 # A SwiftBar plugin. SwiftBar runs this every 15s and renders its stdout.
 #
-# IT ONLY READS. `computer-setup status --json` for the run summary and
-# staleness, and three JSON files in ~/.local/state/computer-setup for the
+# IT ONLY READS. `tenon status --json` for the run summary and
+# staleness, and three JSON files in ~/.local/state/tenon for the
 # inventory, the history and live progress. No Ansible on the refresh cycle: a
 # check takes ~17s and the 10:00 agent already runs one, so polling it here
 # would burn a CPU core and a network round trip every 15 seconds to re-learn
@@ -25,17 +25,17 @@ import subprocess
 import sys
 import time
 
-STATE = os.path.expanduser("~/.local/state/computer-setup")
-CLI = os.path.expanduser("~/.local/bin/computer-setup")
+STATE = os.path.expanduser("~/.local/state/tenon")
+CLI = os.path.expanduser("~/.local/bin/tenon")
 UPGRADE_COMMAND = os.path.expanduser(
-    "~/.local/share/computer-setup/actions/upgrade.command")
+    "~/.local/share/tenon/actions/upgrade.command")
 # Past this with no new line, a run with no end marker was killed rather than
-# still going. Matches `computer-setup progress`.
+# still going. Matches `tenon progress`.
 STALLED_SECONDS = 300
 
 
 def read_status():
-    """`computer-setup status --json`, or None if it cannot be read.
+    """`tenon status --json`, or None if it cannot be read.
 
     Via the CLI rather than reading last-run.json directly, even though this
     plugin reads the other three files that way. Staleness is the reason: it
@@ -85,7 +85,7 @@ def esc(text):
 
 
 def action(label, verb, **params):
-    """A menu item that runs `computer-setup <verb>` in the background; see README."""
+    """A menu item that runs `tenon <verb>` in the background; see README."""
     opts = "bash=%s param1=%s terminal=false refresh=true" % (CLI, verb)
     extra = " ".join("%s=%s" % kv for kv in params.items())
     print("%s | %s %s" % (esc(label), opts, extra))
@@ -215,7 +215,7 @@ def main():
             print("%d task(s) FAILED | color=red sfimage=xmark.octagon" % failed)
             for entry in (status.get("failed") or [])[:6]:
                 print("--%s" % esc(entry.get("dest") or entry.get("item") or entry.get("task")))
-            # Opens the file. `computer-setup log` prints to stdout, and every
+            # Opens the file. `tenon log` prints to stdout, and every
             # action here runs in the background — so running it would have
             # produced nothing at all, on the one menu item that matters most.
             if latest_log:
@@ -305,6 +305,6 @@ if __name__ == "__main__":
         # about why. Render something legible instead.
         print(":exclamationmark.triangle: | sfcolor=red")
         print("---")
-        print("computer-setup plugin error | color=red")
+        print("Tenon plugin error | color=red")
         print("%s | size=11 color=gray" % esc(exc))
         sys.exit(0)

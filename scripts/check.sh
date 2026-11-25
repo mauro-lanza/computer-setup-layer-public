@@ -5,7 +5,7 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-PLUGIN="files/swiftbar/computer-setup.15s.py"
+PLUGIN="files/swiftbar/tenon.15s.py"
 PY=/usr/bin/python3
 
 echo "==> Plugin compiles"
@@ -13,28 +13,28 @@ echo "==> Plugin compiles"
 echo "  ok  $PLUGIN"
 
 # Builds a fixture HOME and prints the plugin's output for it.
-# $1 the JSON `computer-setup status --json` should return
+# $1 the JSON `tenon status --json` should return
 # $2 optional progress.jsonl content
 render() {
     local status_json="$1" progress="${2:-}" home_name="${3:-home}"
     local root home
     root="$(mktemp -d)"
     home="$root/$home_name"
-    mkdir -p "$home/.local/state/computer-setup" "$home/.local/bin" \
-             "$home/Library/Logs/computer-setup"
+    mkdir -p "$home/.local/state/tenon" "$home/.local/bin" \
+             "$home/Library/Logs/tenon"
 
     # Stub CLI. The plugin shells out for status; everything else it reads.
     printf '#!/bin/bash\ncat <<'\''JSON'\''\n%s\nJSON\n' "$status_json" \
-        > "$home/.local/bin/computer-setup"
-    chmod +x "$home/.local/bin/computer-setup"
+        > "$home/.local/bin/tenon"
+    chmod +x "$home/.local/bin/tenon"
 
     printf '{"schema_version":1,"generated":"2026-09-18T10:00:00+0200","mode":"check","partial":false,"complete":true,"files":[{"path":"/a"},{"path":"/b"}],"directories":[],"backups":[],"orphans":[]}\n' \
-        > "$home/.local/state/computer-setup/managed-paths.json"
-    printf '{"schema_version":1,"finished":"2026-09-18T10:00:00+0200","mode":"check","result":"ok","changed":0,"failed":0,"ok":200,"tasks":216,"partial":false,"duration_seconds":18.1,"log":"%s/Library/Logs/computer-setup/20260918-100000-check.log"}\n' \
-        "$home" > "$home/.local/state/computer-setup/history.jsonl"
-    : > "$home/Library/Logs/computer-setup/20260918-100000-check.log"
+        > "$home/.local/state/tenon/managed-paths.json"
+    printf '{"schema_version":1,"finished":"2026-09-18T10:00:00+0200","mode":"check","result":"ok","changed":0,"failed":0,"ok":200,"tasks":216,"partial":false,"duration_seconds":18.1,"log":"%s/Library/Logs/tenon/20260918-100000-check.log"}\n' \
+        "$home" > "$home/.local/state/tenon/history.jsonl"
+    : > "$home/Library/Logs/tenon/20260918-100000-check.log"
     [[ -n "$progress" ]] && printf '%s\n' "$progress" \
-        > "$home/.local/state/computer-setup/progress.jsonl"
+        > "$home/.local/state/tenon/progress.jsonl"
 
     HOME="$home" "$PY" "$PWD/$PLUGIN"
     rm -rf -- "$root"
@@ -76,7 +76,7 @@ refute "an action used shell= instead of bash=" "$out" 'shell='
 refute "an action asked SwiftBar to open a Terminal" "$out" 'terminal=true'
 expect "check does not run in the background" "$out" 'param1=check terminal=false'
 expect "apply does not run in the background" "$out" 'param1=apply terminal=false'
-# `computer-setup log` prints to stdout. Run as a background action it produces
+# `tenon log` prints to stdout. Run as a background action it produces
 # nothing at all — which it did, on the failure branch, until this gate existed.
 refute "an action runs a command whose output goes nowhere" "$out" 'param1=log'
 expect "upgrade does not go through open" "$out" 'bash=/usr/bin/open .*upgrade\.command'
@@ -135,7 +135,7 @@ echo "  ok  hrefs encode spaces"
 # at. Neither may produce a stack trace in the menu bar.
 echo "==> Degrades when the CLI is missing"
 home="$(mktemp -d)"
-mkdir -p "$home/.local/state/computer-setup"
+mkdir -p "$home/.local/state/tenon"
 out="$(HOME="$home" "$PY" "$PWD/$PLUGIN")"
 rm -rf -- "$home"
 refute "the plugin raised with no CLI present" "$out" 'plugin error|Traceback'

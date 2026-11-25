@@ -1,6 +1,6 @@
-# computer-setup-layer-public
+# tenon-layer-public
 
-Public content layer for [computer-setup](https://github.com/mauro-lanza/computer-setup).
+Public content layer for [tenon](https://github.com/mauro-lanza/tenon).
 Shareable baseline that any adopter can use as-is or fork.
 
 ## Contents
@@ -8,7 +8,7 @@ Shareable baseline that any adopter can use as-is or fork.
 | File | Purpose |
 |---|---|
 | `layer.yml` | Manifest: `name: public`, `schema_version: 2` |
-| `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/computer-setup/machine.yml` |
+| `questions.yml` | Machine decisions with one answer — git identity, default editor, repositories directory, drift schedule. Prompted by bootstrap; answers stored in `~/.config/tenon/machine.yml` |
 | `capabilities.yml` | Selectable capabilities — the optional-tools menu bootstrap prompts from, plus the `config:` bundles and `adopt_if_present` probes the engine derives from them |
 | `vars.yml` | What every platform shares: zsh config files, git config, shared template values |
 | `vars/Darwin.yml`, `vars/Linux.yml` | Per-platform values, merged only on that platform: package baselines, zsh paths, macOS `defaults`, scheduled jobs, the login shell. See "Platforms" below |
@@ -30,13 +30,13 @@ data. A capability declares `config: [{ src, dest }]` and the generic
 ### The menu bar readout
 
 The `swiftbar` capability installs SwiftBar and deploys a plugin that renders
-`computer-setup`'s state: drift, sync health, orphans, and live progress while a
+`tenon`'s state: drift, sync health, orphans, and live progress while a
 run is happening.
 
 It only **reads** — the four JSON files the engine already writes, every 15s. It
 runs no Ansible on its refresh cycle: a check takes ~17s and the 10:00 agent
 already runs one. The CLI stays the API, so anything the menu shows,
-`computer-setup` can already tell you, and the plugin survives an engine change.
+`tenon` can already tell you, and the plugin survives an engine change.
 
 It runs on `/usr/bin/python3`, not the engine's pinned interpreter, so it still
 renders when the runtime is broken — which is exactly when someone looks at it.
@@ -54,7 +54,7 @@ Three things about SwiftBar that are not obvious and cost a session each:
   file, which needs no permission at all. Everything else runs in the background.
 - **Every file in the plugin directory is imported as a plugin and executed.**
   The `.command` file lived there briefly and appeared in the menu bar as a
-  second, broken item. It is deployed to `~/.local/share/computer-setup/actions/`
+  second, broken item. It is deployed to `~/.local/share/tenon/actions/`
   instead; the plugin directory holds plugins and nothing else.
 - **`check` and `apply` run in the background**, so the menu bar icon becomes a progress indicator. Only `upgrade` opens a terminal, because it prompts and needs sudo.
 
@@ -102,10 +102,10 @@ entry in `packages_baseline.brew` rather than restating it.
 
 ## How it's used
 
-Cloned into `~/.local/share/computer-setup/layers/public/` and merged at the
+Cloned into `~/.local/share/tenon/layers/public/` and merged at the
 lowest priority, so any other layer can override it. Priority is set in the
 machine's layer manifest, not here. See the
-[contract](https://github.com/mauro-lanza/computer-setup/blob/main/docs/architecture.md)
+[contract](https://github.com/mauro-lanza/tenon/blob/main/docs/architecture.md)
 for the merge rules.
 
 ### Platforms

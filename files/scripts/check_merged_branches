@@ -298,7 +298,7 @@ if [[ ! -d "$BASE_DIR" ]]; then
   exit 1
 fi
 
-# Discover checkouts the same way `computer-setup repos` does. Two deliberate
+# Discover checkouts the same way `tenon repos` does. Two deliberate
 # differences:
 #   * no `-type d`, because a linked worktree's `.git` is a FILE, and a worktree
 #     is a perfectly valid place to prune branches from;

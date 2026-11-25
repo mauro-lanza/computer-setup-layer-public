@@ -20,8 +20,8 @@ packages_baseline:
 
 # ─── Editor (git core.editor, $EDITOR); keyed by the `editor` answer ─────────
 # Arch's zed package installs the binary as zeditor.
-git_editor: "{{ {'vscode': 'code --wait', 'zed': 'zeditor --wait', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
-editor_command: "{{ {'vscode': 'code', 'zed': 'zeditor', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
+git_editor: "{{ {'vscode': 'code --wait', 'zed': 'zeditor --wait', 'none': ''}.get(tenon_answers.editor | default(''), '') }}"
+editor_command: "{{ {'vscode': 'code', 'zed': 'zeditor', 'none': ''}.get(tenon_answers.editor | default(''), '') }}"
 
 # ─── Shell (shell role) ──────────────────────────────────────────────────────
 # This layer's zsh setup is the shell; macOS already defaults to zsh.

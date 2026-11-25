@@ -1,4 +1,4 @@
-# Managed by computer-setup (layer: public) — do not edit manually
+# Managed by tenon (layer: public) — do not edit manually
 
 # ─── Auto-activate virtualenv on directory change ─────────────────────────────
 auto_activate_venv() {

@@ -1,5 +1,5 @@
 ---
-# Schema: computer-setup/examples/example-layer/capabilities.yml
+# Schema: tenon/examples/example-layer/capabilities.yml
 
 capabilities:
   - id: nvm
@@ -8,14 +8,14 @@ capabilities:
       brew: nvm
     adopt_if_present: "{{ homebrew_prefix }}/opt/nvm/nvm.sh"
   - id: ansible-lint
-    desc: "ansible-lint (required to develop computer-setup itself)"
+    desc: "ansible-lint (required to develop tenon itself)"
     packages:
       brew: ansible-lint
       pacman: ansible-lint
     # adopt_if_present keeps an already-provisioned machine managed without re-selecting.
     adopt_if_present: "{{ homebrew_prefix }}/bin/ansible-lint"
   - id: shellcheck
-    desc: "shellcheck (required to develop computer-setup itself)"
+    desc: "shellcheck (required to develop tenon itself)"
     packages:
       brew: shellcheck
       pacman: shellcheck
@@ -48,12 +48,12 @@ capabilities:
     packages:
       cask: swiftbar
     config:
-      - src: swiftbar/computer-setup.15s.py
-        dest: "{{ home_dir }}/.local/share/computer-setup/swiftbar/computer-setup.15s.py"
+      - src: swiftbar/tenon.15s.py
+        dest: "{{ home_dir }}/.local/share/tenon/swiftbar/tenon.15s.py"
         executable: true
       # Outside the plugin directory, which SwiftBar executes in full; see README.
       - src: swiftbar/upgrade.command
-        dest: "{{ home_dir }}/.local/share/computer-setup/actions/upgrade.command"
+        dest: "{{ home_dir }}/.local/share/tenon/actions/upgrade.command"
         executable: true
   - id: fswatch
     desc: "File system watcher (fswatch)"
@@ -131,6 +131,8 @@ capabilities:
         dest: "{{ home_dir }}/.config/opencode/skills/repo-review/references/report-template.md"
       - src: opencode/skills/pr-review/SKILL.md
         dest: "{{ home_dir }}/.config/opencode/skills/pr-review/SKILL.md"
+      - src: opencode/skills/slack-triage/SKILL.md
+        dest: "{{ home_dir }}/.config/opencode/skills/slack-triage/SKILL.md"
   - id: act
     desc: "Run GitHub Actions locally (act)"
     packages:

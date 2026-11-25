@@ -1,4 +1,4 @@
-# Managed by computer-setup (layer: public) — do not edit manually.
+# Managed by tenon (layer: public) — do not edit manually.
 # The theme and plugin paths come from this layer's vars/<platform>.yml, so
 # this file names only the ones installed on this machine. This file is
 # provided by a content layer; the orchestrator only deploys it and the ~/.zsh
@@ -45,7 +45,7 @@ fi
 unset _zcompdump
 
 # ─── Managed modular configs ──────────────────────────────────────────────────
-# Source every snippet computer-setup deployed (engine CLI + all layers), in
+# Source every snippet tenon deployed (engine CLI + all layers), in
 # filename order. The orchestrator manages the contents of ~/.zsh.
 for _cs_snippet in "$HOME"/.zsh/*.zsh(N); do
   source "$_cs_snippet"

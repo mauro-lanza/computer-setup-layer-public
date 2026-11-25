@@ -126,7 +126,7 @@
     "terminal.integrated.fontFamily": "{{ terminal_font_family }}",
 {# ripgrep is an optional capability: only point todo-tree at it when it's
    actually active, instead of hardcoding a path that may not exist. #}
-{% if 'ripgrep' in (computer_setup_active_capabilities | default([])) %}
+{% if 'ripgrep' in (tenon_active_capabilities | default([])) %}
     "todo-tree.ripgrep.ripgrep": "{{ homebrew_prefix }}/bin/rg",
 {% endif %}
 

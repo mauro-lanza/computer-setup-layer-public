@@ -1,7 +1,7 @@
 {# Derived from the `editor` question (see questions.yml), so git's core.editor
    and $EDITOR can never disagree. Rendered empty when the answer is `none`,
    which deliberately leaves whatever the user already exports untouched. #}
-# Managed by computer-setup (layer: public) — do not edit manually
+# Managed by tenon (layer: public) — do not edit manually
 {% if (editor_command | default('', true)) | length > 0 %}
 # Default editor — chosen via the `editor` question, not hardcoded here.
 if command -v {{ editor_command }} &>/dev/null; then

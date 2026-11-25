@@ -26,8 +26,8 @@ packages_baseline:
     - font-meslo-lg-nerd-font
 
 # ─── Editor (git core.editor, $EDITOR); keyed by the `editor` answer ─────────
-git_editor: "{{ {'vscode': 'code --wait', 'zed': 'zed --wait', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
-editor_command: "{{ {'vscode': 'code', 'zed': 'zed', 'none': ''}.get(computer_setup_answers.editor | default(''), '') }}"
+git_editor: "{{ {'vscode': 'code --wait', 'zed': 'zed --wait', 'none': ''}.get(tenon_answers.editor | default(''), '') }}"
+editor_command: "{{ {'vscode': 'code', 'zed': 'zed', 'none': ''}.get(tenon_answers.editor | default(''), '') }}"
 
 # Casks safe to `--adopt`; protected-payload casks can lose the existing app on failure.
 packages_cask_adopt:
@@ -65,7 +65,7 @@ zsh_env:
 # ─── Scheduled jobs (scheduled_agents role, launchd) ─────────────────────────
 # Needs check-merged-branches; 08:30 runs before the 09:00 upgrade. --auto-delete is required because a LaunchAgent has no terminal.
 scheduled_agents:
-  - label: com.computer-setup.branch-cleanup
+  - label: com.tenon.branch-cleanup
     program: "{{ home_dir }}/.local/bin/check_merged_branches"
     args:
       - --all-repos
@@ -84,7 +84,7 @@ macos_defaults:
   - domain: com.ameba.SwiftBar
     key: PluginDirectory
     type: string
-    value: "{{ home_dir }}/.local/share/computer-setup/swiftbar"
+    value: "{{ home_dir }}/.local/share/tenon/swiftbar"
   - domain: NSGlobalDomain          # Finder: show all file extensions
     key: AppleShowAllExtensions
     type: bool
