@@ -20,43 +20,11 @@ Shareable baseline that any adopter can use as-is or fork.
 | `templates/zed/settings.json.j2` | Zed settings — deployed by the `zed` capability's `config:` bundle |
 | `templates/opencode.jsonc.j2` | opencode CLI config — deployed by the `opencode` capability's `config:` bundle |
 | `templates/scripts/*.j2` | Standalone scripts deployed to `~/.local/bin` by their capability |
-| `files/swiftbar/*` | The menu bar readout and its Terminal action — deployed by the `swiftbar` capability. See below |
-| `scripts/check.sh` | This layer's gate. Runs the menu bar plugin against fixture machine states |
+| `scripts/check.sh` | This layer's gate. Lints the scripts and runs the opencode plugin tests |
 
 There is no `zed` role, `opencode` role or `dbt` role — config-only tools are
 data. A capability declares `config: [{ src, dest }]` and the generic
 `capability_configs` role deploys it, so adding one needs no orchestrator change.
-
-### The menu bar readout
-
-The `swiftbar` capability installs SwiftBar and deploys a plugin that renders
-`tenon`'s state: drift, sync health, orphans, and live progress while a
-run is happening.
-
-It only **reads** — the four JSON files the engine already writes, every 15s. It
-runs no Ansible on its refresh cycle: a check takes ~17s and the 10:00 agent
-already runs one. The CLI stays the API, so anything the menu shows,
-`tenon` can already tell you, and the plugin survives an engine change.
-
-It runs on `/usr/bin/python3`, not the engine's pinned interpreter, so it still
-renders when the runtime is broken — which is exactly when someone looks at it.
-
-Three things about SwiftBar that are not obvious and cost a session each:
-
-- **Only `bash`, `href` and `refresh` are action parameters.** Anything else is
-  parsed and silently ignored.
-- **`terminal=true` is the default, and it needs Accessibility permission.** It
-  drives Terminal by AppleScript, and when a Terminal window already exists —
-  including minimized or on another Space — it sends a ⌘T *keystroke* through
-  System Events. SwiftBar never requests that permission and never mentions it;
-  the script aborts after activating Terminal, so a window comes forward empty
-  (SwiftBar issue #456). `upgrade` therefore goes through `open` on a `.command`
-  file, which needs no permission at all. Everything else runs in the background.
-- **Every file in the plugin directory is imported as a plugin and executed.**
-  The `.command` file lived there briefly and appeared in the menu bar as a
-  second, broken item. It is deployed to `~/.local/share/tenon/actions/`
-  instead; the plugin directory holds plugins and nothing else.
-- **`check` and `apply` run in the background**, so the menu bar icon becomes a progress indicator. Only `upgrade` opens a terminal, because it prompts and needs sudo.
 
 ### Running the gate
 
@@ -64,23 +32,10 @@ Three things about SwiftBar that are not obvious and cost a session each:
 ./scripts/check.sh
 ```
 
-The engine's `check.sh` cannot cover this — it deliberately names no tool, and
-the plugin is layer data. So the layer carries its own.
-
-It renders the plugin against fixture machine states (converged, drift, failed,
-stale, mid-run, finished, and no CLI at all) and asserts both the output shape
-and the action contract: no `shell=`, no `terminal=true`, `check`/`apply` in the
-background, `upgrade` through `open`, and no action running a command whose
-output would go nowhere.
-
-Fixtures work by pointing `$HOME` at a temporary directory — every path in the
-plugin goes through `os.path.expanduser`, so one variable redirects the state
-directory, the CLI, the logs and the upgrade action at once, and the plugin
-needs no test hook of its own.
-
-A plugin that raises still exits 0 — it renders an error item — so the exit code
-proves nothing and every assertion is on the output. Every failure this catches
-has happened for real and was silent each time.
+The engine's `check.sh` cannot cover this layer's executable content (it names
+no tool), so the layer carries its own: every `files/opencode` file must be a
+config `src`, scripts are syntax-checked and linted, and the opencode plugin
+tests run with `bun`.
 
 ### files/ vs templates/
 

@@ -42,19 +42,6 @@ capabilities:
     desc: "MariaDB/MySQL C client library (build dep for mysqlclient; keg-only)"
     packages:
       brew: mariadb-connector-c
-  # Menu bar readout; rationale in the README.
-  - id: swiftbar
-    desc: "SwiftBar menu bar readout of machine configuration"
-    packages:
-      cask: swiftbar
-    config:
-      - src: swiftbar/tenon.15s.py
-        dest: "{{ home_dir }}/.local/share/tenon/swiftbar/tenon.15s.py"
-        executable: true
-      # Outside the plugin directory, which SwiftBar executes in full; see README.
-      - src: swiftbar/upgrade.command
-        dest: "{{ home_dir }}/.local/share/tenon/actions/upgrade.command"
-        executable: true
   - id: fswatch
     desc: "File system watcher (fswatch)"
     packages:

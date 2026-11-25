@@ -80,11 +80,6 @@ scheduled_agents:
 # ─── macOS system defaults (macos role) ──────────────────────────────────────
 # Native YAML types (not strings) for osx_defaults idempotency.
 macos_defaults:
-  # Preset so a fresh machine never shows SwiftBar's plugin-folder dialog.
-  - domain: com.ameba.SwiftBar
-    key: PluginDirectory
-    type: string
-    value: "{{ home_dir }}/.local/share/tenon/swiftbar"
   - domain: NSGlobalDomain          # Finder: show all file extensions
     key: AppleShowAllExtensions
     type: bool
